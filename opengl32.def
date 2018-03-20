@@ -337,23 +337,26 @@ EXPORTS
     glVertex4sv
     glVertexPointer
     glViewport
-    wglCopyContext
-    wglCreateContext
-    wglCreateLayerContext
-    wglDeleteContext
-    wglDescribeLayerPlane
-    wglGetCurrentContext
-    wglGetCurrentDC
-    wglGetLayerPaletteEntries
-    wglGetProcAddress
-    wglMakeCurrent
-    wglRealizeLayerPalette
-    wglSetLayerPaletteEntries
-    wglShareLists
-    wglSwapBuffers
-    wglSwapLayerBuffers
-    wglSwapMultipleBuffers
-    wglUseFontBitmapsA
-    wglUseFontBitmapsW
-    wglUseFontOutlinesA
-    wglUseFontOutlinesW
+
+    wglCopyContext=wglCopyContext_imp
+    wglCreateContext=wglCreateContext_imp
+    wglCreateLayerContext=wglCreateLayerContext_imp
+    wglDeleteContext=wglDeleteContext_imp
+    wglDescribeLayerPlane=wglDescribeLayerPlane_imp
+    wglGetCurrentContext=wglGetCurrentContext_imp
+    wglGetCurrentDC=wglGetCurrentDC_imp
+    wglGetLayerPaletteEntries=wglGetLayerPaletteEntries_imp
+    wglGetProcAddress=wglGetProcAddress_imp
+    wglMakeCurrent=wglMakeCurrent_imp
+    wglRealizeLayerPalette=wglRealizeLayerPalette_imp
+    wglSetLayerPaletteEntries=wglSetLayerPaletteEntries_imp
+    wglShareLists=wglShareLists_imp
+    wglSwapBuffers=wglSwapBuffers_imp
+    wglSwapLayerBuffers=wglSwapLayerBuffers_imp
+    wglSwapMultipleBuffers=wglSwapMultipleBuffers_imp
+    wglUseFontBitmapsA=wglUseFontBitmapsA_imp
+    wglUseFontBitmapsW=wglUseFontBitmapsW_imp
+    wglUseFontOutlinesA=wglUseFontOutlinesA_imp
+    wglUseFontOutlinesW=wglUseFontOutlinesW_imp
+    wglChoosePixelFormat=wglChoosePixelFormat_imp
+    wglSetPixelFormat=wglSetPixelFormat_imp 
