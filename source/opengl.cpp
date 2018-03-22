@@ -1,8 +1,10 @@
 #include <cassert>
+#include <stdint.h>
 
+#include "wgl.h"
 #include "exports.h"
 #include "GL.h"
-
+#include "context.h"
 
 void __stdcall glAccum(GLenum op, GLfloat value) {
   //
@@ -49,7 +51,20 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 }
 
 void __stdcall glClear(GLbitfield mask) {
-  //
+
+  auto xorshift32 = []() {
+    static uint32_t x = 12345;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x;
+  };
+
+  auto &frame = Context->frame();
+  for (uint32_t i = 0; i < frame.width * frame.height; ++i) {
+    frame.pixels[i] = xorshift32();
+  }
+
 }
 
 void __stdcall glClearAccum(GLfloat red, GLfloat green, GLfloat blue,

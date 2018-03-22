@@ -1,45 +1,46 @@
 #pragma once
 
 #include <cassert>
+#include <map>
 #include <memory>
+#include <mutex>
+#include <set>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include "context.h"
+
+#define GdiHook gdi_hook_t::inst()
+
 struct gdi_hook_t {
 
-  struct lock_info_t {
-    uint32_t *pixels;
-    uint32_t width, pitch;
-    uint32_t height;
-  };
+  bool hook(gl_context_t &cxt);
+  bool unhook(gl_context_t &cxt);
 
-  gdi_hook_t();
+  bool invalidate(HWND hwnd);
 
-  ~gdi_hook_t();
+  LRESULT CALLBACK dispatch(HWND hwnd, uint32_t msg, WPARAM w, LPARAM l);
 
-  bool hook(HWND hwnd);
-
-  bool invalidate();
-
-  bool lock(lock_info_t *info);
-
-  LRESULT CALLBACK handler(HWND hwnd, uint32_t msg, WPARAM w, LPARAM l);
+  static gdi_hook_t &inst() {
+    static gdi_hook_t self;
+    return self;
+  }
 
 protected:
+  // context map
+  std::map<HWND, gl_context_t *> context;
 
   // screen buffer info
-  struct {
-    BITMAPINFO bmp;
-    std::unique_ptr<uint32_t[]> data;
-  } screen;
+  std::map<HWND, BITMAPINFO> bmpInfoMap;
+  std::map<HWND, WNDPROC> procMap;
+  std::set<HWND> hwndMap;
 
-  WNDPROC origProc;
-  HWND handle;
+  //  std::mutex mutex;
 
   // repaint the current window (WM_PAINT)
-  LRESULT redraw(HWND hwnd);
+  LRESULT redraw(gl_context_t &cxt);
 
-  // create a back buffer of a specific size
-  bool screenCreate(HWND hwnd);
+  // prepare a back buffer of a specific size
+  bool screenPrepare(gl_context_t &cxt);
 };

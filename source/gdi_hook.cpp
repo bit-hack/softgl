@@ -1,108 +1,102 @@
 #include <mutex>
 #include <map>
 
+#include "context.h"
 #include "gdi_hook.h"
 
 namespace {
-struct hwnd_map_t {
-  std::mutex mutex;
-  std::map<HWND, gdi_hook_t *> hook;
-};
-
-hwnd_map_t g_hwnd_map;
-
 LRESULT CALLBACK trampoline(HWND hwnd, uint32_t msg, WPARAM w, LPARAM l) {
-  gdi_hook_t *self = nullptr;
-  {
-    std::lock_guard<std::mutex> guard(g_hwnd_map.mutex);
-    self = g_hwnd_map.hook.at(hwnd);
-  }
-  return self ? self->handler(hwnd, msg, w, l)
-              : DefWindowProcA(hwnd, msg, w, l);
+  return GdiHook.dispatch(hwnd, msg, w, l);
 }
 } // namespace
 
-gdi_hook_t::gdi_hook_t() : screen{} {}
-
-gdi_hook_t::~gdi_hook_t() {
-  // remove this from the map
-  std::lock_guard<std::mutex> guard(g_hwnd_map.mutex);
-  auto &hook = g_hwnd_map.hook;
-  for (auto itt = hook.begin(); itt != hook.end();) {
-    if (itt->second == this) {
-      itt = hook.erase(itt);
-    } else {
-      ++itt;
-    }
-  }
+bool gdi_hook_t::unhook(gl_context_t &cxt) {
+  WNDPROC proc = procMap.at(cxt.getHwnd());
+  SetWindowLongPtrA(cxt.getHwnd(), GWL_WNDPROC, (LONG)proc);
+  return true;
 }
 
-bool gdi_hook_t::hook(HWND hwnd) {
-  // add this hwnd to the hwnd map
-  {
-    std::lock_guard<std::mutex> guard(g_hwnd_map.mutex);
-    g_hwnd_map.hook[hwnd] = this;
-  }
-  handle = hwnd;
+bool gdi_hook_t::hook(gl_context_t &cxt) {
+  // save the context
+  HWND hwnd = cxt.getHwnd();
+  context.emplace(hwnd, &cxt);
+
+  // save window handle
+  hwndMap.insert(hwnd);
   // create screen buffer
-  screenCreate(hwnd);
+  screenPrepare(cxt);
   // get all the orig window data
-  origProc = (WNDPROC)GetWindowLongPtrA(hwnd, GWL_WNDPROC);
-  if (!origProc) {
+  WNDPROC proc = (WNDPROC)GetWindowLongPtrA(hwnd, GWL_WNDPROC);
+  if (!proc)
     return false;
-  }
-  // set all of the window data
+  // insert into the proc map
+  procMap.emplace(hwnd, proc);
+  // hook the window proc
   SetWindowLongPtrA(hwnd, GWL_WNDPROC, (LONG)trampoline);
   return true;
 }
 
-bool gdi_hook_t::invalidate() {
+bool gdi_hook_t::invalidate(HWND hwnd) {
   // invalidate entire window
-  InvalidateRect(handle, NULL, FALSE);
-  return UpdateWindow(handle) == TRUE;
+  InvalidateRect(hwnd, NULL, FALSE);
+  return UpdateWindow(hwnd) == TRUE;
 }
 
-bool gdi_hook_t::lock(lock_info_t *info) {
-  assert(info);
-  info->pixels = screen.data.get();
-  info->width = screen.bmp.bmiHeader.biWidth;
-  info->height = screen.bmp.bmiHeader.biHeight;
-  info->pitch = screen.bmp.bmiHeader.biWidth;
-  return info->pixels != NULL;
-}
+// dispatch window messages to the right wndproc
+LRESULT CALLBACK gdi_hook_t::dispatch(HWND hwnd, uint32_t msg, WPARAM w,
+                                      LPARAM l) {
 
-LRESULT CALLBACK gdi_hook_t::handler(HWND hwnd, uint32_t msg, WPARAM w,
-                                     LPARAM l) {
-  if (msg == WM_PAINT) {
-    return redraw(hwnd);
-  } else {
-    return origProc(hwnd, msg, w, l);
+  auto itt = procMap.find(hwnd);
+  if (itt == procMap.end())
+    return DefWindowProcA(hwnd, msg, w, l);
+
+  gl_context_t *cxt = context.at(hwnd);
+
+  switch (msg) {
+  case WM_PAINT:
+    return redraw(*cxt);
+  default:
+    return itt->second(hwnd, msg, w, l);
   }
 }
 
 // repaint the current window (WM_PAINT)
-LRESULT gdi_hook_t::redraw(HWND hwnd) {
-  if (!screen.data) {
-    // no screen; hand back to default handler
-    return DefWindowProcA(hwnd, WM_PAINT, 0, 0);
-  }
+LRESULT gdi_hook_t::redraw(gl_context_t &cxt) {
+//  std::lock_guard<std::mutex> guard(mutex);
+
+  HWND hwnd = cxt.getHwnd();
+
   // blit buffer to screen
   HDC dc = GetDC(hwnd);
-  if (dc == NULL) {
+  if (dc == NULL)
     return 0;
-  }
-  const BITMAPINFOHEADER &bih = screen.bmp.bmiHeader;
+
+  // get the frame from the context
+  const auto &frame = Context->frame();
+
+  auto bmpItt = bmpInfoMap.find(hwnd);
+  if (bmpItt == bmpInfoMap.end())
+    return 0;
+
+  // grab bitmap info header
+  BITMAPINFOHEADER &bih = bmpItt->second.bmiHeader;
+  bih.biWidth = frame.width;
+  bih.biHeight = frame.height;
+
   // do the bit blit
   const int r =
       StretchDIBits(dc,
                     // src
-                    0, 0, bih.biWidth, bih.biHeight,
+                    0, 0, frame.width, frame.height,
                     // dst
-                    0, 0, bih.biWidth, bih.biHeight, screen.data.get(),
-                    &(screen.bmp), DIB_RGB_COLORS, SRCCOPY);
-  if (r == 0) {
+                    0, 0, bih.biWidth, bih.biHeight,
+                    // pixels
+                    frame.pixels.get(),
+                    &(bmpItt->second),
+                    DIB_RGB_COLORS, SRCCOPY);
+  if (r == 0)
     return 0;
-  }
+
   // finished WM_PAINT
   ReleaseDC(hwnd, dc);
   ValidateRect(hwnd, NULL);
@@ -110,23 +104,33 @@ LRESULT gdi_hook_t::redraw(HWND hwnd) {
 }
 
 // create a back buffer of a specific size
-bool gdi_hook_t::screenCreate(HWND hwnd) {
+bool gdi_hook_t::screenPrepare(gl_context_t &cxt) {
+//  std::lock_guard<std::mutex> guard(mutex);
+
+  HWND hwnd = cxt.getHwnd();
+
+  // get the screen size
   RECT rect;
   GetClientRect(hwnd, &rect);
   const uint32_t w = rect.right;
   const uint32_t h = rect.bottom;
-  // create screen data
-  screen.data = std::make_unique<uint32_t[]>(w * h);
-  assert(screen.data);
-  // create bitmap info
-  ZeroMemory(&screen.bmp, sizeof(BITMAPINFO));
-  BITMAPINFOHEADER &b = screen.bmp.bmiHeader;
+
+  bmpInfoMap.emplace(hwnd, BITMAPINFO{});
+  BITMAPINFO &bmpInfo = bmpInfoMap.at(hwnd);
+
+  // create preliminary bitmap info
+  ZeroMemory(&bmpInfo, sizeof(BITMAPINFO));
+  BITMAPINFOHEADER &b = bmpInfo.bmiHeader;
   b.biSize = sizeof(BITMAPINFOHEADER);
   b.biBitCount = 32;
   b.biWidth = w;
   b.biHeight = h;
   b.biPlanes = 1;
   b.biCompression = BI_RGB;
+
+  // tell the context to resize
+  cxt.resize(w, h);
+
   // success
   return true;
 }

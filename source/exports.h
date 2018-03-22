@@ -369,9 +369,6 @@ int   __stdcall wglGetLayerPaletteEntries_imp(HDC a, int b, int c, int d, COLORR
 BOOL  __stdcall wglRealizeLayerPalette_imp(HDC a, int b, BOOL c);
 BOOL  __stdcall wglSwapLayerBuffers_imp(HDC a, UINT b);
 DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b);
-} // extern "C"
-
-extern "C" {
-BOOL __stdcall wglSetPixelFormat_imp(HDC hdc, int iPixelFormat, const struct PIXELFORMATDESCRIPTOR *ppfd);
-int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppfd);
+BOOL  __stdcall wglSetPixelFormat_imp(HDC hdc, int iPixelFormat, const struct PIXELFORMATDESCRIPTOR *ppfd);
+int   __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppfd);
 } // extern "C"

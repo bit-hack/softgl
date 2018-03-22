@@ -8,131 +8,113 @@
 
 #include <Windows.h>
 
-#include "exports.h"
+#include "wgl.h"
 #include "game_id.h"
 #include "gdi_hook.h"
-
-struct wgl_context_t {
-  HDC hdc;
-  gdi_hook_t gdi_hook;
-};
 
 struct hdc_info_t {
   tagPIXELFORMATDESCRIPTOR pfd;
 };
 
 struct wgl_state_t {
-  game_id_t game_id;
-  std::mutex mutex;
-  std::vector<tagPIXELFORMATDESCRIPTOR> pixel_formats;
-  std::map<HDC, hdc_info_t> hdc_map;
-  std::set<wgl_context_t*> contexts;
+  game_id_t gameId;
+  std::vector<tagPIXELFORMATDESCRIPTOR> pixelFormats;
+  std::map<HDC, hdc_info_t> hdcMap;
+  std::set<gl_context_t*> contexts;
 } wgl;
 
-static thread_local wgl_context_t *context = nullptr;
+static thread_local gl_context_t *gl_context = nullptr;
+
+gl_context_t *getContext() {
+  return gl_context;
+}
 
 HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
-  std::lock_guard<std::mutex> guard{wgl.mutex};
   // lookup the hdc to get the pixel format
-  auto itt = wgl.hdc_map.find(hdc);
-  if (itt == wgl.hdc_map.end()) {
+  auto itt = wgl.hdcMap.find(hdc);
+  if (itt == wgl.hdcMap.end())
     return nullptr;
-  }
+
   hdc_info_t &info = itt->second;
-  // create a new context
-  context = new wgl_context_t;
-  wgl.contexts.insert(context);
-  // fill out context
-  context->hdc = hdc;
   HWND hwnd = WindowFromDC(hdc);
-  if (hwnd) {
-    context->gdi_hook.hook(hwnd);
-  }
-  return HGLRC(context);
+  // create a new context
+  gl_context_t *cxt = new gl_context_t(hwnd, hdc);
+  // insert into the context map
+  wgl.contexts.insert(cxt);
+  // fill out context
+  // XXX: Move this to context
+  GdiHook.hook(*cxt);
+
+  return HGLRC(cxt);
 }
 
 BOOL __stdcall wglSwapBuffers_imp(HDC a) {
-
-  auto xorshift32 = []() {
-    static uint32_t x = 12345;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return x;
-  };
-
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  if (context) {
-    gdi_hook_t::lock_info_t lock;
-    if (context->gdi_hook.lock(&lock)) {
-      for (uint32_t i = 0; i < lock.width * lock.height; ++i) {
-          lock.pixels[i] = xorshift32();
-      }
-    }
-    context->gdi_hook.invalidate();
-    return TRUE;
-  }
-  return FALSE;
+  if (!gl_context)
+    return FALSE;
+  GdiHook.invalidate(gl_context->getHwnd());
+  return TRUE;
 }
 
 BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
-  __debugbreak();
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  if (context) {
-    // erase the context
-    auto itt = wgl.contexts.find((wgl_context_t*)a);
-    delete *itt;
-    wgl.contexts.erase(itt);
-
-    context = nullptr;
+  if (!a) {
+    return false;
   }
+  gl_context_t *cxt = (gl_context_t *)a;
+  if (gl_context == cxt) {
+    // this is the current context
+    gl_context = nullptr;
+  }
+  // unhook this window
+  GdiHook.unhook(*cxt);
+  // erase the context
+  auto itt = wgl.contexts.find(cxt);
+  delete *itt;
+  wgl.contexts.erase(itt);
   return TRUE;
 }
 
 HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
   __debugbreak();
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  return (HGLRC)context;
+  return (HGLRC)gl_context;
 }
 
 HDC __stdcall wglGetCurrentDC_imp(VOID) {
   __debugbreak();
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  return context ? context->hdc : nullptr;
+  return gl_context ? gl_context->getHdc() : nullptr;
 }
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
   __debugbreak();
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  return 0;
+  return (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
 }
 
 BOOL __stdcall wglMakeCurrent_imp(HDC a, HGLRC b) {
-  __debugbreak();
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  return FALSE;
+  gl_context_t *cxt = (gl_context_t*)b;
+  if (b != nullptr) {
+    // make the global context
+    gl_context = cxt;
+    if (cxt->getHdc() != a) {
+      __debugbreak();
+    }
+  }
+  return TRUE;
 }
 
-// The SetPixelFormat function sets the pixel format of the specified device
-// context to the format specified by the iPixelFormat index.
-//
-// If the function succeeds, the return value is TRUE.
 BOOL __stdcall wglSetPixelFormat_imp(HDC hdc,
                                  int iPixelFormat,
                                  const struct PIXELFORMATDESCRIPTOR *ppfd)
 {
-  std::lock_guard<std::mutex> guard{wgl.mutex};
-  if (iPixelFormat <= 0 || size_t(iPixelFormat) > wgl.pixel_formats.size())
+  if (iPixelFormat <= 0 || size_t(iPixelFormat) > wgl.pixelFormats.size())
     return FALSE;
   // lookup the requested format
-  const tagPIXELFORMATDESCRIPTOR &pfmt = wgl.pixel_formats[iPixelFormat - 1];
+  const tagPIXELFORMATDESCRIPTOR &pfmt = wgl.pixelFormats[iPixelFormat - 1];
 
   // have we seen this hdc before
   hdc_info_t *info = nullptr;
-  auto itt = wgl.hdc_map.find(hdc);
-  if (itt == wgl.hdc_map.end()) {
-    wgl.hdc_map[hdc] = hdc_info_t{};
-    info = &wgl.hdc_map.at(hdc);
+  auto itt = wgl.hdcMap.find(hdc);
+  if (itt == wgl.hdcMap.end()) {
+    wgl.hdcMap[hdc] = hdc_info_t{};
+    info = &wgl.hdcMap.at(hdc);
   }
   else {
     info = &itt->second;
@@ -146,24 +128,17 @@ BOOL __stdcall wglSetPixelFormat_imp(HDC hdc,
   return TRUE;
 }
 
-// The ChoosePixelFormat function attempts to match an appropriate pixel format
-// supported by a device context to a given pixel format specification.
-// 
-// If the function succeeds, the return value is a pixel format index
-// (one-based) that is the closest match to the given pixel format descriptor.
 int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppfd)
 {
-  std::lock_guard<std::mutex> guard{wgl.mutex};
   if (!ppfd)
     return 0;
   // add pixel format to our list of requested formats
-  wgl.pixel_formats.push_back(*ppfd);
-  return wgl.pixel_formats.size();
+  wgl.pixelFormats.push_back(*ppfd);
+  return wgl.pixelFormats.size();
 }
 
 BOOL __stdcall wglCopyContext_imp(HGLRC a, HGLRC b, UINT c) {
   __debugbreak();
-  std::lock_guard<std::mutex> guard{wgl.mutex};
   return FALSE;
 }
 
