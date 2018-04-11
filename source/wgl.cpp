@@ -35,7 +35,7 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
   if (itt == wgl.hdcMap.end())
     return nullptr;
 
-  hdc_info_t &info = itt->second;
+  const hdc_info_t &info = itt->second;
   HWND hwnd = WindowFromDC(hdc);
   // create a new context
   gl_context_t *cxt = new gl_context_t(hwnd, hdc);
@@ -84,8 +84,8 @@ HDC __stdcall wglGetCurrentDC_imp(VOID) {
 }
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
-  __debugbreak();
-  return (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
+  PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
+  return proc;
 }
 
 BOOL __stdcall wglMakeCurrent_imp(HDC a, HGLRC b) {
@@ -204,4 +204,8 @@ BOOL __stdcall wglSwapLayerBuffers_imp(HDC a, UINT b) {
 DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b) {
   __debugbreak();
   return 0;
+}
+
+const char *wglGetExtensionsStringARB_imp(HDC hdc) {
+  return "";
 }

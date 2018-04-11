@@ -360,3 +360,4 @@ EXPORTS
     wglUseFontOutlinesW=wglUseFontOutlinesW_imp
     wglChoosePixelFormat=wglChoosePixelFormat_imp
     wglSetPixelFormat=wglSetPixelFormat_imp 
+    wglGetExtensionsStringARB=wglGetExtensionsStringARB_imp
