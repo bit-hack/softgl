@@ -5,10 +5,19 @@
 
 #include "GL.h"
 
+#include "draw.h"
+#include "vertex.h"
+#include "matrix.h"
+
+
 struct gl_state_t {
   GLenum beginMode;
   uint32_t clearColor;
   GLenum cullMode;
+};
+
+struct rectf_t {
+  float x, y, w, h;
 };
 
 struct gl_context_t {
@@ -21,7 +30,10 @@ struct gl_context_t {
   };
 
   // ctor
-  gl_context_t(HWND Hwnd, HDC Hdc) : hwnd(Hwnd), hdc(Hdc) {}
+  gl_context_t(HWND Hwnd, HDC Hdc)
+    : hwnd(Hwnd)
+    , hdc(Hdc)
+  {}
 
   // framebuffer accessors
   buffer_t &frame() { return buffer; }
@@ -34,11 +46,26 @@ struct gl_context_t {
   HWND getHwnd() const { return hwnd; }
   HDC getHdc() const { return hdc; }
 
+  surface_t &surf();
+
+  matrix_manager_t &matrix();
+
+  vertex_manager_t &vertex();
+
+  void flush();
+
   // opengl state machine
   gl_state_t glState;
 
+  // viewport
+  rectf_t viewport;
+
 protected:
   gl_context_t(const gl_context_t &) = delete;
+
+  surface_t surface;
+  matrix_manager_t matrix_manager;
+  vertex_manager_t vertex_manager;
 
   // framebuffer info
   buffer_t buffer;

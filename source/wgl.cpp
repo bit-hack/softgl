@@ -51,6 +51,7 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
 BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   if (!gl_context)
     return FALSE;
+  Context->flush();
   GdiHook.invalidate(gl_context->getHwnd());
   return TRUE;
 }

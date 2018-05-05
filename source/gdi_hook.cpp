@@ -87,7 +87,11 @@ LRESULT gdi_hook_t::redraw(gl_context_t &cxt) {
   const int r =
       StretchDIBits(dc,
                     // src
-                    0, 0, frame.width, frame.height,
+#if 0
+                    0, frame.height-1, frame.width, -int(frame.height),
+#else
+                    0, 0, frame.width, int(frame.height),
+#endif
                     // dst
                     0, 0, bih.biWidth, bih.biHeight,
                     // pixels

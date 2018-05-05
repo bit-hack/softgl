@@ -5,27 +5,44 @@
 #include "context.h"
 #include "exports.h"
 #include "wgl.h"
+#include "matrix.h"
+
+
+#if 1
+#define DEBUG_BREAK                 \
+  {                                 \
+    static bool once=true;          \
+    if (once) {                     \
+      __debugbreak();               \
+      once = false;                 \
+      printf("%s\n", __FUNCTION__); \
+    }                               \
+  }
+#else
+#define DEBUG_BREAK
+#endif
+
 
 void __stdcall glAccum(GLenum op, GLfloat value) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glAlphaFunc(GLenum func, GLclampf ref) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 GLboolean __stdcall glAreTexturesResident(GLsizei n, const GLuint *textures,
                                           GLboolean *residences) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
   return GL_FALSE;
 }
 
 void __stdcall glArrayElement(GLint i) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glBegin(GLenum mode) {
@@ -33,56 +50,44 @@ void __stdcall glBegin(GLenum mode) {
   auto &cxt = *Context;
   // save primative mode
   cxt.glState.beginMode = mode;
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glBindTexture(GLenum target, GLuint texture) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glBitmap(GLsizei width, GLsizei height, GLfloat xorig,
                         GLfloat yorig, GLfloat xmove, GLfloat ymove,
                         const GLubyte *bitmap) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glBlendFunc(GLenum sfactor, GLenum dfactor) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glCallList(GLuint list) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glClear(GLbitfield mask) {
-
-  auto xorshift32 = []() {
-    static uint32_t x = 12345;
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return x;
-  };
-
-  auto &frame = Context->frame();
-  for (uint32_t i = 0; i < frame.width * frame.height; ++i) {
-    frame.pixels[i] = xorshift32() & 0x1f1f1f;
-  }
+  Context->surf().fill(0x202020);
 }
 
 void __stdcall glClearAccum(GLfloat red, GLfloat green, GLfloat blue,
                             GLfloat alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a) {
@@ -90,243 +95,243 @@ void __stdcall glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a) {
   int cg = 0xff & int(g * 255.f);
   int cb = 0xff & int(b * 255.f);
   int ca = 0xff & int(a * 255.f);
-  auto &cc = getContext()->glState.clearColor;
+  auto &cc = Context->glState.clearColor;
   cc = ca << 24 | cr << 16 | cg << 8 | cb;
 }
 
 void __stdcall glClearDepth(GLclampd depth) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glClearIndex(GLfloat c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glClearStencil(GLint s) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glClipPlane(GLenum plane, const GLdouble *equation) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3b(GLbyte red, GLbyte green, GLbyte blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3bv(const GLbyte *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3d(GLdouble red, GLdouble green, GLdouble blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3f(GLfloat red, GLfloat green, GLfloat blue) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColor3fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3i(GLint red, GLint green, GLint blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3s(GLshort red, GLshort green, GLshort blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3ubv(const GLubyte *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3ui(GLuint red, GLuint green, GLuint blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3uiv(const GLuint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3us(GLushort red, GLushort green, GLushort blue) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor3usv(const GLushort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4b(GLbyte red, GLbyte green, GLbyte blue, GLbyte alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4bv(const GLbyte *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4d(GLdouble red, GLdouble green, GLdouble blue,
                          GLdouble alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4f(GLfloat red, GLfloat green, GLfloat blue,
                          GLfloat alpha) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColor4fv(const GLfloat *v) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColor4i(GLint red, GLint green, GLint blue, GLint alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4s(GLshort red, GLshort green, GLshort blue,
                          GLshort alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4ub(GLubyte red, GLubyte green, GLubyte blue,
                           GLubyte alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4ubv(const GLubyte *v) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColor4ui(GLuint red, GLuint green, GLuint blue, GLuint alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4uiv(const GLuint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4us(GLushort red, GLushort green, GLushort blue,
                           GLushort alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColor4usv(const GLushort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColorMask(GLboolean red, GLboolean green, GLboolean blue,
                            GLboolean alpha) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColorMaterial(GLenum face, GLenum mode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glColorPointer(GLint size, GLenum type, GLsizei stride,
                               const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCopyPixels(GLint x, GLint y, GLsizei width, GLsizei height,
                             GLenum type) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCopyTexImage1D(GLenum target, GLint level,
                                 GLenum internalFormat, GLint x, GLint y,
                                 GLsizei width, GLint border) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCopyTexImage2D(GLenum target, GLint level,
                                 GLenum internalFormat, GLint x, GLint y,
                                 GLsizei width, GLsizei height, GLint border) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                                    GLint x, GLint y, GLsizei width) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset,
                                    GLint yoffset, GLint x, GLint y,
                                    GLsizei width, GLsizei height) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glCullFace(GLenum mode) {
@@ -335,32 +340,32 @@ void __stdcall glCullFace(GLenum mode) {
 
 void __stdcall glDebugEntry(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glDeleteLists(GLuint list, GLsizei range) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glDeleteTextures(GLsizei n, const GLuint *textures) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glDepthFunc(GLenum func) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glDepthMask(GLboolean flag) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glDisable(GLenum cap) {
@@ -371,284 +376,301 @@ void __stdcall glDisable(GLenum cap) {
   case GL_ALPHA_TEST:
     break;
   default:
-    __debugbreak();
+//    DEBUG_BREAK;
+    break;
   }
 }
 
 void __stdcall glDisableClientState(GLenum array) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glDrawArrays(GLenum mode, GLint first, GLsizei count) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glDrawBuffer(GLenum mode) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glDrawElements(GLenum mode, GLsizei count, GLenum type,
                               const GLvoid *indices) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glDrawPixels(GLsizei width, GLsizei height, GLenum format,
                             GLenum type, const GLvoid *pixels) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEdgeFlag(GLboolean flag) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEdgeFlagPointer(GLsizei stride, const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEdgeFlagv(const GLboolean *flag) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEnable(GLenum cap) {
   switch (cap) {
   case GL_TEXTURE_2D:
   case GL_ALPHA_TEST:
+  case GL_CULL_FACE:
     break;
   default:
-    __debugbreak();
+//    DEBUG_BREAK;
+    break;
   }
 }
 
 void __stdcall glEnableClientState(GLenum array) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEnd(void) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glEndList(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord1d(GLdouble u) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord1dv(const GLdouble *u) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord1f(GLfloat u) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord1fv(const GLfloat *u) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord2d(GLdouble u, GLdouble v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord2dv(const GLdouble *u) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord2f(GLfloat u, GLfloat v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalCoord2fv(const GLfloat *u) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalMesh1(GLenum mode, GLint i1, GLint i2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalMesh2(GLenum mode, GLint i1, GLint i2, GLint j1,
                            GLint j2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalPoint1(GLint i) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glEvalPoint2(GLint i, GLint j) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFeedbackBuffer(GLsizei size, GLenum type, GLfloat *buffer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFinish(void) {
   //
-  __debugbreak();
+  Context->flush();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFlush(void) {
   //
-  __debugbreak();
+  Context->flush();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFogf(GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFogfv(GLenum pname, const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFogi(GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFogiv(GLenum pname, const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFrontFace(GLenum mode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glFrustum(GLdouble left, GLdouble right, GLdouble bottom,
                          GLdouble top, GLdouble zNear, GLdouble zFar) {
   //
-  __debugbreak();
+  Context->matrix().glFrustum(left, right, bottom, top, zNear, zFar);
 }
 
 GLuint __stdcall glGenLists(GLsizei range) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
   return 0;
 }
 
 void __stdcall glGenTextures(GLsizei n, GLuint *textures) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetBooleanv(GLenum pname, GLboolean *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetClipPlane(GLenum plane, GLdouble *equation) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetDoublev(GLenum pname, GLdouble *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 GLenum __stdcall glGetError(void) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
   return 0;
 }
 
 void __stdcall glGetFloatv(GLenum pname, GLfloat *params) {
-  //
-  __debugbreak();
+  switch (pname) {
+  case GL_MODELVIEW_MATRIX: {
+    const matrix_t &m = Context->matrix().modelview();
+    memcpy(params, m.e.data(), sizeof(GLfloat) * 16);
+    break;
+  }
+  case GL_PROJECTION_MATRIX: {
+    const matrix_t &m = Context->matrix().projection();
+    memcpy(params, m.e.data(), sizeof(GLfloat) * 16);
+    break;
+  }
+  default:
+    DEBUG_BREAK;
+  }
 }
 
 void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetLightfv(GLenum light, GLenum pname, GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetLightiv(GLenum light, GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetMapdv(GLenum target, GLenum query, GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetMapfv(GLenum target, GLenum query, GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetMapiv(GLenum target, GLenum query, GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetMaterialfv(GLenum face, GLenum pname, GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetMaterialiv(GLenum face, GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetPixelMapfv(GLenum map, GLfloat *values) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetPixelMapuiv(GLenum map, GLuint *values) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetPixelMapusv(GLenum map, GLushort *values) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetPointerv(GLenum pname, GLvoid **params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetPolygonStipple(GLubyte *mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 const GLubyte *__stdcall glGetString(GLenum name) {
@@ -669,981 +691,981 @@ const GLubyte *__stdcall glGetString(GLenum name) {
 
 void __stdcall glGetTexEnvfv(GLenum target, GLenum pname, GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexEnviv(GLenum target, GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexGendv(GLenum coord, GLenum pname, GLdouble *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexGenfv(GLenum coord, GLenum pname, GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexGeniv(GLenum coord, GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexImage(GLenum target, GLint level, GLenum format,
                              GLenum type, GLvoid *pixels) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexLevelParameterfv(GLenum target, GLint level,
                                         GLenum pname, GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexLevelParameteriv(GLenum target, GLint level,
                                         GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexParameterfv(GLenum target, GLenum pname,
                                    GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glHint(GLenum target, GLenum mode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexMask(GLuint mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexPointer(GLenum type, GLsizei stride,
                               const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexd(GLdouble c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexdv(const GLdouble *c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexf(GLfloat c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexfv(const GLfloat *c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexi(GLint c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexiv(const GLint *c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexs(GLshort c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexsv(const GLshort *c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexub(GLubyte c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glIndexubv(const GLubyte *c) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glInitNames(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glInterleavedArrays(GLenum format, GLsizei stride,
                                    const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 GLboolean __stdcall glIsEnabled(GLenum cap) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
   return GL_FALSE;
 }
 
 GLboolean __stdcall glIsList(GLuint list) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
   return GL_FALSE;
 }
 
 GLboolean __stdcall glIsTexture(GLuint texture) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
   return GL_FALSE;
 }
 
 void __stdcall glLightModelf(GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLightModelfv(GLenum pname, const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLightModeli(GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLightModeliv(GLenum pname, const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLightf(GLenum light, GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLighti(GLenum light, GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLightiv(GLenum light, GLenum pname, const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLineStipple(GLint factor, GLushort pattern) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLineWidth(GLfloat width) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glListBase(GLuint base) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLoadIdentity(void) {
   //
-  __debugbreak();
+  Context->matrix().glLoadIdentity();
 }
 
 void __stdcall glLoadMatrixd(const GLdouble *m) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLoadMatrixf(const GLfloat *m) {
   //
-  __debugbreak();
+  Context->matrix().glLoadMatrixf(m);
 }
 
 void __stdcall glLoadName(GLuint name) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glLogicOp(GLenum opcode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMap1d(GLenum target, GLdouble u1, GLdouble u2, GLint stride,
                        GLint order, const GLdouble *points) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMap1f(GLenum target, GLfloat u1, GLfloat u2, GLint stride,
                        GLint order, const GLfloat *points) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMap2d(GLenum target, GLdouble u1, GLdouble u2, GLint ustride,
                        GLint uorder, GLdouble v1, GLdouble v2, GLint vstride,
                        GLint vorder, const GLdouble *points) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMap2f(GLenum target, GLfloat u1, GLfloat u2, GLint ustride,
                        GLint uorder, GLfloat v1, GLfloat v2, GLint vstride,
                        GLint vorder, const GLfloat *points) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMapGrid1d(GLint un, GLdouble u1, GLdouble u2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMapGrid1f(GLint un, GLfloat u1, GLfloat u2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMapGrid2d(GLint un, GLdouble u1, GLdouble u2, GLint vn,
                            GLdouble v1, GLdouble v2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMapGrid2f(GLint un, GLfloat u1, GLfloat u2, GLint vn,
                            GLfloat v1, GLfloat v2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMaterialf(GLenum face, GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMateriali(GLenum face, GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMaterialiv(GLenum face, GLenum pname, const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMatrixMode(GLenum mode) {
   //
-  __debugbreak();
+  Context->matrix().glMatrixMode(mode);
 }
 
 void __stdcall glMultMatrixd(const GLdouble *m) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glMultMatrixf(const GLfloat *m) {
   //
-  __debugbreak();
+  Context->matrix().glMultMatrixf(m);
 }
 
 void __stdcall glNewList(GLuint list, GLenum mode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3b(GLbyte nx, GLbyte ny, GLbyte nz) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3bv(const GLbyte *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3d(GLdouble nx, GLdouble ny, GLdouble nz) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3i(GLint nx, GLint ny, GLint nz) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3s(GLshort nx, GLshort ny, GLshort nz) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormal3sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glNormalPointer(GLenum type, GLsizei stride,
                                const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glOrtho(GLdouble left, GLdouble right, GLdouble bottom,
                        GLdouble top, GLdouble zNear, GLdouble zFar) {
   //
-  __debugbreak();
+  Context->matrix().glOrtho(left, right, bottom, top, zNear, zFar);
 }
 
 void __stdcall glPassThrough(GLfloat token) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelMapfv(GLenum map, GLsizei mapsize,
                             const GLfloat *values) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelMapuiv(GLenum map, GLsizei mapsize,
                              const GLuint *values) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelMapusv(GLenum map, GLsizei mapsize,
                              const GLushort *values) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelStoref(GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelStorei(GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelTransferf(GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelTransferi(GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPixelZoom(GLfloat xfactor, GLfloat yfactor) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPointSize(GLfloat size) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPolygonMode(GLenum face, GLenum mode) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glPolygonOffset(GLfloat factor, GLfloat units) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPolygonStipple(const GLubyte *mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPop(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPopClient(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPopMatrix(void) {
   //
-  __debugbreak();
+  Context->matrix().glPopMatrix();
 }
 
 void __stdcall glPopName(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPrioritizeTextures(GLsizei n, const GLuint *textures,
                                     const GLclampf *priorities) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPush(GLbitfield mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPushClient(GLbitfield mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPushMatrix(void) {
   //
-  __debugbreak();
+  Context->matrix().glPushMatrix();
 }
 
 void __stdcall glPushName(GLuint name) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2d(GLdouble x, GLdouble y) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2f(GLfloat x, GLfloat y) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2i(GLint x, GLint y) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2s(GLshort x, GLshort y) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos2sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3d(GLdouble x, GLdouble y, GLdouble z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3f(GLfloat x, GLfloat y, GLfloat z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3i(GLint x, GLint y, GLint z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3s(GLshort x, GLshort y, GLshort z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos3sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4d(GLdouble x, GLdouble y, GLdouble z, GLdouble w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4i(GLint x, GLint y, GLint z, GLint w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4s(GLshort x, GLshort y, GLshort z, GLshort w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRasterPos4sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glReadBuffer(GLenum mode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height,
                             GLenum format, GLenum type, GLvoid *pixels) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRectdv(const GLdouble *v1, const GLdouble *v2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRectfv(const GLfloat *v1, const GLfloat *v2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRecti(GLint x1, GLint y1, GLint x2, GLint y2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRectiv(const GLint *v1, const GLint *v2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRects(GLshort x1, GLshort y1, GLshort x2, GLshort y2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRectsv(const GLshort *v1, const GLshort *v2) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 GLint __stdcall glRenderMode(GLenum mode) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
   return 0;
 }
 
 void __stdcall glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdouble z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
   //
-  __debugbreak();
+  Context->matrix().glRotatef(angle, x, y, z);
 }
 
 void __stdcall glScaled(GLdouble x, GLdouble y, GLdouble z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glScalef(GLfloat x, GLfloat y, GLfloat z) {
   //
-  __debugbreak();
+  Context->matrix().glScalef(x, y, z);
 }
 
 void __stdcall glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glSelectBuffer(GLsizei size, GLuint *buffer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glShadeModel(GLenum mode) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glStencilFunc(GLenum func, GLint ref, GLuint mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glStencilMask(GLuint mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glStencilOp(GLenum fail, GLenum zfail, GLenum zpass) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1d(GLdouble s) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1f(GLfloat s) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1i(GLint s) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1s(GLshort s) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord1sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2d(GLdouble s, GLdouble t) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2f(GLfloat s, GLfloat t) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2i(GLint s, GLint t) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2s(GLshort s, GLshort t) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord2sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3d(GLdouble s, GLdouble t, GLdouble r) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3f(GLfloat s, GLfloat t, GLfloat r) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3i(GLint s, GLint t, GLint r) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3s(GLshort s, GLshort t, GLshort r) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord3sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4d(GLdouble s, GLdouble t, GLdouble r, GLdouble q) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4f(GLfloat s, GLfloat t, GLfloat r, GLfloat q) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4i(GLint s, GLint t, GLint r, GLint q) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4s(GLshort s, GLshort t, GLshort r, GLshort q) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoord4sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexCoordPointer(GLint size, GLenum type, GLsizei stride,
                                  const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glTexEnvfv(GLenum target, GLenum pname, const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexEnvi(GLenum target, GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexEnviv(GLenum target, GLenum pname, const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexGend(GLenum coord, GLenum pname, GLdouble param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexGendv(GLenum coord, GLenum pname, const GLdouble *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexGenf(GLenum coord, GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexGenfv(GLenum coord, GLenum pname, const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexGeni(GLenum coord, GLenum pname, GLint param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexGeniv(GLenum coord, GLenum pname, const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexImage1D(GLenum target, GLint level, GLint internalformat,
                             GLsizei width, GLint border, GLenum format,
                             GLenum type, const GLvoid *pixels) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexImage2D(GLenum target, GLint level, GLint internalformat,
                             GLsizei width, GLsizei height, GLint border,
                             GLenum format, GLenum type, const GLvoid *pixels) {
   // XXX: Save these out to disk, hash pixels ...
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameterfv(GLenum target, GLenum pname,
                                 const GLfloat *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameteri(GLenum target, GLenum pname, GLint param) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameteriv(GLenum target, GLenum pname,
                                 const GLint *params) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                                GLsizei width, GLenum format, GLenum type,
                                const GLvoid *pixels) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
@@ -1651,166 +1673,166 @@ void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
                                GLenum format, GLenum type,
                                const GLvoid *pixels) {
   //
-  __debugbreak();
+//  DEBUG_BREAK;
 }
 
 void __stdcall glTranslated(GLdouble x, GLdouble y, GLdouble z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
   //
-  __debugbreak();
+  Context->matrix().glTranslatef(x, y, z);
 }
 
 void __stdcall glVertex2d(GLdouble x, GLdouble y) {
-  //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex2dv(const GLdouble *v) {
-  //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex2f(GLfloat x, GLfloat y) {
   //
-  __debugbreak();
+  Context->vertex().push(float4{x, y, 0, 1.f});
 }
 
 void __stdcall glVertex2fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex2i(GLint x, GLint y) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex2iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex2s(GLshort x, GLshort y) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex2sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex3d(GLdouble x, GLdouble y, GLdouble z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex3dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-  //
-  __debugbreak();
+  Context->vertex().push(float4{x, y, z, 1.f});
 }
 
 void __stdcall glVertex3fv(const GLfloat *v) {
   //
-  __debugbreak();
+  Context->vertex().push(float4{v[0], v[1], v[2], 1.f});
 }
 
 void __stdcall glVertex3i(GLint x, GLint y, GLint z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex3iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex3s(GLshort x, GLshort y, GLshort z) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex3sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4d(GLdouble x, GLdouble y, GLdouble z, GLdouble w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4dv(const GLdouble *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
   //
-  __debugbreak();
+  Context->vertex().push(float4{x, y, z, w});
 }
 
 void __stdcall glVertex4fv(const GLfloat *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4i(GLint x, GLint y, GLint z, GLint w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4iv(const GLint *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4s(GLshort x, GLshort y, GLshort z, GLshort w) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertex4sv(const GLshort *v) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glVertexPointer(GLint size, GLenum type, GLsizei stride,
                                const GLvoid *pointer) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
-void __stdcall glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
-  //
-  __debugbreak();
+void __stdcall glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
+  Context->viewport = rectf_t{
+    float(x),
+    float(y),
+    float(w),
+    float(h)};
 }
 
 void __stdcall glPushAttrib(GLbitfield mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPopAttrib(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPushClientAttrib(GLbitfield mask) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
 
 void __stdcall glPopClientAttrib(void) {
   //
-  __debugbreak();
+  DEBUG_BREAK;
 }
