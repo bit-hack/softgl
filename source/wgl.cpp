@@ -41,18 +41,14 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
   gl_context_t *cxt = new gl_context_t(hwnd, hdc);
   // insert into the context map
   wgl.contexts.insert(cxt);
-  // fill out context
-  // XXX: Move this to context
-  GdiHook.hook(*cxt);
-
   return HGLRC(cxt);
 }
 
 BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   if (!gl_context)
     return FALSE;
-  Context->flush();
-  GdiHook.invalidate(gl_context->getHwnd());
+  Context->on_flush();
+  GdiHook.invalidate(gl_context->window.getHwnd());
   return TRUE;
 }
 
@@ -81,7 +77,7 @@ HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
 
 HDC __stdcall wglGetCurrentDC_imp(VOID) {
   __debugbreak();
-  return gl_context ? gl_context->getHdc() : nullptr;
+  return gl_context ? gl_context->window.getHdc() : nullptr;
 }
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
@@ -94,9 +90,10 @@ BOOL __stdcall wglMakeCurrent_imp(HDC a, HGLRC b) {
   if (b != nullptr) {
     // make the global context
     gl_context = cxt;
-    if (cxt->getHdc() != a) {
+    if (cxt->window.getHdc() != a) {
       __debugbreak();
     }
+    gl_context->on_make_current();
   }
   return TRUE;
 }

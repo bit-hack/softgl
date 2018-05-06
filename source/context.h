@@ -1,87 +1,52 @@
 #pragma once
-#include <Windows.h>
 #include <cstdint>
 #include <memory>
 
 #include "GL.h"
+#include "windows.h"
 
-#include "draw.h"
-#include "vertex.h"
+#include "buffer.h"
 #include "matrix.h"
+#include "state.h"
+#include "texture.h"
+#include "vertex.h"
+#include "window.h"
+#include "primative.h"
 
-
-struct gl_state_t {
-  GLenum beginMode;
-  uint32_t clearColor;
-  GLenum cullMode;
-};
-
-struct rectf_t {
-  float x, y, w, h;
-};
 
 struct gl_context_t {
 
-  // framebuffer info
-  struct buffer_t {
-    uint32_t width, height;
-    std::unique_ptr<uint32_t[]> pixels;
-    std::unique_ptr<float[]> depth;
-  };
+  void *operator new(size_t request) {
+    // note: operator required for aligned alloc
+    assert(request);
+    size_t alignment = alignof(gl_context_t);
+    return _aligned_malloc(request, alignment);
+  }
 
-  // ctor
-  gl_context_t(HWND Hwnd, HDC Hdc)
-    : hwnd(Hwnd)
-    , hdc(Hdc)
-  {}
+  void operator delete(void *ptr) {
+    // note: operator required for aligned alloc
+    assert(ptr);
+    _aligned_free(ptr);
+  }
 
-  // framebuffer accessors
-  buffer_t &frame() { return buffer; }
-  const buffer_t &frame() const { return buffer; }
+  gl_context_t(HWND hwnd, HDC hdc) : window(hwnd, hdc) {}
 
-  // resize framebuffer
-  void resize(uint32_t w, uint32_t h);
+  buffer_manager_t buffer;
+  window_manager_t window;
+  matrix_manager_t matrix;
+  vertex_manager_t vertex;
+  texture_manager_t texture;
+  state_manager_t state;
+  primative_manager_t primative;
 
-  // get window data
-  HWND getHwnd() const { return hwnd; }
-  HDC getHdc() const { return hdc; }
-
-  surface_t &surf();
-
-  matrix_manager_t &matrix();
-
-  vertex_manager_t &vertex();
-
-  void flush();
-
-  // opengl state machine
-  gl_state_t glState;
-
-  // viewport
-  rectf_t viewport;
+  void on_flush();
+  void on_resize();
+  void on_make_current();
 
 protected:
   gl_context_t(const gl_context_t &) = delete;
-
-  surface_t surface;
-  matrix_manager_t matrix_manager;
-  vertex_manager_t vertex_manager;
-
-  // framebuffer info
-  buffer_t buffer;
-  // window data info
-  HWND hwnd;
-  HDC hdc;
 };
 
 // context accessor
 gl_context_t *getContext();
 #define Context getContext()
-
-namespace {
-inline gl_state_t &getGLState() {
-  return getContext()->glState;
-}
-} // namespace {}
-
-#define GLState getGLState()

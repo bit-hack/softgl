@@ -6,7 +6,13 @@
 
 struct vertex_manager_t {
 
-  void push(const float4 &f);
+  void pushUV(const float2 &f);
+
+  void pushColor(const float4 &f);
+
+  void pushCoord(const float4 &f);
+
+  void polygonMode(GLenum mode);
 
   void clear();
 

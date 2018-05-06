@@ -11,14 +11,21 @@ LRESULT CALLBACK trampoline(HWND hwnd, uint32_t msg, WPARAM w, LPARAM l) {
 } // namespace
 
 bool gdi_hook_t::unhook(gl_context_t &cxt) {
-  WNDPROC proc = procMap.at(cxt.getHwnd());
-  SetWindowLongPtrA(cxt.getHwnd(), GWL_WNDPROC, (LONG)proc);
+  WNDPROC proc = procMap.at(cxt.window.getHwnd());
+  SetWindowLongPtrA(cxt.window.getHwnd(), GWL_WNDPROC, (LONG)proc);
   return true;
 }
 
 bool gdi_hook_t::hook(gl_context_t &cxt) {
+
+  // check if context already hooked
+  for (const auto itt : context)
+    if (&cxt == itt.second)
+      // context already hooked
+      return true;
+
   // save the context
-  HWND hwnd = cxt.getHwnd();
+  HWND hwnd = cxt.window.getHwnd();
   context.emplace(hwnd, &cxt);
 
   // save window handle
@@ -55,8 +62,13 @@ LRESULT CALLBACK gdi_hook_t::dispatch(HWND hwnd, uint32_t msg, WPARAM w,
   switch (msg) {
   case WM_PAINT:
     return redraw(*cxt);
-  default:
-    return itt->second(hwnd, msg, w, l);
+  default: {
+    // note: Some window procs are not valid pointers but rather handles
+    //       and must be called via a proxy function.  This is the case
+    //       for unreal tournament 99.
+    auto proc = itt->second;
+    return CallWindowProcA(proc, hwnd, msg, w, l);
+  }
   }
 }
 
@@ -64,7 +76,7 @@ LRESULT CALLBACK gdi_hook_t::dispatch(HWND hwnd, uint32_t msg, WPARAM w,
 LRESULT gdi_hook_t::redraw(gl_context_t &cxt) {
 //  std::lock_guard<std::mutex> guard(mutex);
 
-  HWND hwnd = cxt.getHwnd();
+  HWND hwnd = cxt.window.getHwnd();
 
   // blit buffer to screen
   HDC dc = GetDC(hwnd);
@@ -72,7 +84,7 @@ LRESULT gdi_hook_t::redraw(gl_context_t &cxt) {
     return 0;
 
   // get the frame from the context
-  const auto &frame = Context->frame();
+  const auto &buffer = cxt.buffer;
 
   auto bmpItt = bmpInfoMap.find(hwnd);
   if (bmpItt == bmpInfoMap.end())
@@ -80,22 +92,18 @@ LRESULT gdi_hook_t::redraw(gl_context_t &cxt) {
 
   // grab bitmap info header
   BITMAPINFOHEADER &bih = bmpItt->second.bmiHeader;
-  bih.biWidth = frame.width;
-  bih.biHeight = frame.height;
+  bih.biWidth = buffer.width();
+  bih.biHeight = buffer.height();
 
   // do the bit blit
   const int r =
       StretchDIBits(dc,
                     // src
-#if 0
-                    0, frame.height-1, frame.width, -int(frame.height),
-#else
-                    0, 0, frame.width, int(frame.height),
-#endif
+                    0, 0, int(buffer.width()), int(buffer.height()),
                     // dst
                     0, 0, bih.biWidth, bih.biHeight,
                     // pixels
-                    frame.pixels.get(),
+                    buffer.pixels(),
                     &(bmpItt->second),
                     DIB_RGB_COLORS, SRCCOPY);
   if (r == 0)
@@ -111,7 +119,7 @@ LRESULT gdi_hook_t::redraw(gl_context_t &cxt) {
 bool gdi_hook_t::screenPrepare(gl_context_t &cxt) {
 //  std::lock_guard<std::mutex> guard(mutex);
 
-  HWND hwnd = cxt.getHwnd();
+  HWND hwnd = cxt.window.getHwnd();
 
   // get the screen size
   RECT rect;
@@ -133,7 +141,7 @@ bool gdi_hook_t::screenPrepare(gl_context_t &cxt) {
   b.biCompression = BI_RGB;
 
   // tell the context to resize
-  cxt.resize(w, h);
+  cxt.buffer.resize(w, h);
 
   // success
   return true;
