@@ -9,7 +9,6 @@
 #include "matrix.h"
 #include "state.h"
 #include "texture.h"
-#include "vertex.h"
 #include "window.h"
 #include "primative.h"
 
@@ -34,7 +33,6 @@ struct gl_context_t {
   buffer_manager_t buffer;
   window_manager_t window;
   matrix_manager_t matrix;
-  vertex_manager_t vertex;
   texture_manager_t texture;
   state_manager_t state;
   primative_manager_t primative;

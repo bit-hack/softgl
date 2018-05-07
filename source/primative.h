@@ -7,8 +7,13 @@
 #include "math.h"
 
 
-struct triangle_t {
+struct vertex_t {
   float4 coord;
+};
+
+
+struct triangle_t {
+  std::array<vertex_t, 3> vert;
 };
 
 
@@ -16,53 +21,44 @@ struct primative_manager_t {
 
   primative_manager_t()
     : _mode(GL_TRIANGLES)
+    , _head(0)
   {}
 
   void glBegin(GLenum mode) {
     _mode = mode;
+    _vertex.clear();
   }
 
   void glEnd() {
+    _vertex.clear();
   }
 
-  void vertex(const float4 v) {
-    triangle_t t = _make_tri(v);
-    switch (_mode) {
-    case GL_TRIANGLES:
-      _do_triangles(t);
-      break;
-    case GL_TRIANGLE_STRIP:
-      _do_triangle_strip(t);
-      break;
-    case GL_TRIANGLE_FAN:
-      _do_triangle_fan(t);
-      break;
-    case GL_QUADS:
-      _do_quads(t);
-      break;
-    }
+  void add_vertex(const float4 v);
+
+  void clear_triangles() {
+    _triangles.clear();
+  }
+
+  const std::vector<triangle_t> & triangles() const {
+    return _triangles;
   }
 
 protected:
 
+  vertex_t _make_vertex(float4 v) {
+    return vertex_t{v};
+  }
+
+  void _do_quads(vertex_t t);
+
+  void _do_triangles(vertex_t t);
+
+  void _do_triangle_strip(vertex_t t);
+
+  void _do_triangle_fan(vertex_t t);
+
   GLenum _mode;
-  std::vector<triangle_t> _tri_list;
-
-  triangle_t _make_tri(float4 t) {
-    return triangle_t{};
-  }
-
-  void _do_quads(triangle_t t) {
-  }
-
-  void _do_triangles(triangle_t t) {
-  }
-
-  void _do_triangle_strip(triangle_t t) {
-  }
-
-  void _do_triangle_fan(triangle_t t) {
-  }
-
-  std::array<triangle_t, 3> _prev;
+  uint32_t _head;
+  std::vector<vertex_t> _vertex;
+  std::vector<triangle_t> _triangles;
 };

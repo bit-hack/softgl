@@ -78,9 +78,9 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 }
 
 void __stdcall glClear(GLbitfield mask) {
-  if (mask & GL_COLOR_BUFFER_BIT || 1) {
-    Context->buffer.surface().fill(Context->state.clearColor);
-  }
+//  if (mask & GL_COLOR_BUFFER_BIT || 1) {
+    Context->buffer.surface().fill(0x202020);
+//  }
   if (mask & GL_DEPTH_BUFFER_BIT) {
     // TODO
   }
@@ -518,13 +518,11 @@ void __stdcall glFeedbackBuffer(GLsizei size, GLenum type, GLfloat *buffer) {
 void __stdcall glFinish(void) {
   //
   Context->on_flush();
-  DEBUG_BREAK;
 }
 
 void __stdcall glFlush(void) {
   //
   Context->on_flush();
-  DEBUG_BREAK;
 }
 
 void __stdcall glFogf(GLenum pname, GLfloat param) {
@@ -1695,11 +1693,11 @@ void __stdcall glVertex2dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex2f(GLfloat x, GLfloat y) {
-  Context->vertex.pushCoord(float4{x, y, 0, 1.f});
+  Context->primative.add_vertex(float4{x, y, 0, 1.f});
 }
 
 void __stdcall glVertex2fv(const GLfloat *v) {
-  Context->vertex.pushCoord(float4{v[0], v[1], 0, 1.f});
+  Context->primative.add_vertex(float4{v[0], v[1], 0, 1.f});
 }
 
 void __stdcall glVertex2i(GLint x, GLint y) {
@@ -1733,11 +1731,11 @@ void __stdcall glVertex3dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-  Context->vertex.pushCoord(float4{x, y, z, 1.f});
+  Context->primative.add_vertex(float4{x, y, z, 1.f});
 }
 
 void __stdcall glVertex3fv(const GLfloat *v) {
-  Context->vertex.pushCoord(float4{v[0], v[1], v[2], 1.f});
+  Context->primative.add_vertex(float4{v[0], v[1], v[2], 1.f});
 }
 
 void __stdcall glVertex3i(GLint x, GLint y, GLint z) {
@@ -1771,11 +1769,11 @@ void __stdcall glVertex4dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
-  Context->vertex.pushCoord(float4{x, y, z, w});
+  Context->primative.add_vertex(float4{x, y, z, w});
 }
 
 void __stdcall glVertex4fv(const GLfloat *v) {
-  Context->vertex.pushCoord(float4{v[0], v[1], v[2], v[3]});
+  Context->primative.add_vertex(float4{v[0], v[1], v[2], v[3]});
 }
 
 void __stdcall glVertex4i(GLint x, GLint y, GLint z, GLint w) {

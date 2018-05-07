@@ -49,6 +49,7 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
     return FALSE;
   Context->on_flush();
   GdiHook.invalidate(gl_context->window.getHwnd());
+  Context->buffer.surface().fill(0x202020);
   return TRUE;
 }
 
