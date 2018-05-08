@@ -13,31 +13,6 @@ gl_context_t::gl_context_t(HWND hwnd, HDC hdc)
 
 
 void gl_context_t::on_flush() {
-#if 0
-  // get viewport center offset
-  const float vp_x = state.viewport.w * .5f;
-  const float vp_y = state.viewport.h * .5f;
-  // for all pending vertices
-  for (auto v : vertex.vertices) {
-    // homogenous perspective divide
-    v.x /= v.w;
-    v.y /= v.w;
-    v.z /= v.w;
-    // cull points
-    if (v.x < -1.f || v.x >  1.f || v.y < -1.f ||
-        v.y >  1.f || v.z < -1.f || v.z >  1.f) {
-      continue;
-    }
-    // ndc -> dc coordinate
-    const float2 p{
-      vp_x + .5f * v.x * state.viewport.w,
-      vp_y + .5f * v.y * state.viewport.h};
-    // plot point
-    buffer.surface().wuplot(p, 0xffffff);
-  }
-  // clear pending vertices
-  vertex.clear();
-#else
   auto transform = [this](float4 v) -> float2 {
     // get viewport center offset
     const float vp_x = state.viewport.w * .5f;
@@ -51,7 +26,15 @@ void gl_context_t::on_flush() {
                   vp_y + .5f * v.y * state.viewport.h};
   };
 
+  primative.clip_triangles();
+
   for (const auto &t : primative.triangles()) {
+
+    if (t.vert[0].coord.w == 0.f) {
+      // signals fully clipped vertex so discard
+      continue;
+    }
+
     const std::array<float2, 3> c{
         transform(t.vert[0].coord),
         transform(t.vert[1].coord),
@@ -63,7 +46,6 @@ void gl_context_t::on_flush() {
     buffer.surface().wuline(c[2], c[0], 0xffffff);
   }
   primative.clear_triangles();
-#endif
 }
 
 void gl_context_t::on_resize() {

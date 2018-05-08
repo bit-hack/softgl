@@ -150,6 +150,14 @@ struct vec4_t {
     return vec4_t { x, y, z, w };
   }
 
+  static vec4_t lerp(const vec4_t &a, const vec4_t &b, float t) {
+    return vec4_t{
+      a.x + (b.x - a.x) * t,
+      a.y + (b.y - a.y) * t,
+      a.z + (b.z - a.z) * t,
+      a.w + (b.w - a.w) * t};
+  }
+
 };  // vec4_t
 
 

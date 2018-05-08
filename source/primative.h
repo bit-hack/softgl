@@ -39,6 +39,8 @@ struct primative_manager_t {
     return _triangles;
   }
 
+  void clip_triangles();
+
 protected:
 
   vertex_t _make_vertex(float4 v);
