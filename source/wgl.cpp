@@ -11,6 +11,8 @@
 #include "wgl.h"
 #include "game_id.h"
 #include "gdi_hook.h"
+#include "log.h"
+
 
 struct hdc_info_t {
   tagPIXELFORMATDESCRIPTOR pfd;
@@ -29,21 +31,6 @@ gl_context_t *getContext() {
   return gl_context;
 }
 
-HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
-  // lookup the hdc to get the pixel format
-  auto itt = wgl.hdcMap.find(hdc);
-  if (itt == wgl.hdcMap.end())
-    return nullptr;
-
-  const hdc_info_t &info = itt->second;
-  HWND hwnd = WindowFromDC(hdc);
-  // create a new context
-  gl_context_t *cxt = new gl_context_t(hwnd, hdc);
-  // insert into the context map
-  wgl.contexts.insert(cxt);
-  return HGLRC(cxt);
-}
-
 BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   if (!gl_context)
     return FALSE;
@@ -53,7 +40,27 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   return TRUE;
 }
 
+HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
+  log_t::printf("%s(%p)\n", __FUNCTION__, (void*)(hdc));
+
+  // lookup the hdc to get the pixel format
+  auto itt = wgl.hdcMap.find(hdc);
+  if (itt == wgl.hdcMap.end())
+    return nullptr;
+
+  const hdc_info_t &info = itt->second;
+  HWND hwnd = WindowFromDC(hdc);
+  // create a new context
+  gl_context_t *cxt = new gl_context_t(hwnd, hdc);
+  log_t::printf("new context created -> %p\n", (void*)cxt);;
+  // insert into the context map
+  wgl.contexts.insert(cxt);
+  return HGLRC(cxt);
+}
+
 BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
+  log_t::printf("%s(%p)\n", __FUNCTION__, (void*)(a));
+
   if (!a) {
     return false;
   }
@@ -66,27 +73,15 @@ BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
   GdiHook.unhook(*cxt);
   // erase the context
   auto itt = wgl.contexts.find(cxt);
+  log_t::printf("context deleted -> %p\n", (void*)*itt);
   delete *itt;
   wgl.contexts.erase(itt);
   return TRUE;
 }
 
-HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
-  __debugbreak();
-  return (HGLRC)gl_context;
-}
-
-HDC __stdcall wglGetCurrentDC_imp(VOID) {
-  __debugbreak();
-  return gl_context ? gl_context->window.getHdc() : nullptr;
-}
-
-PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
-  PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
-  return proc;
-}
-
 BOOL __stdcall wglMakeCurrent_imp(HDC a, HGLRC b) {
+  log_t::printf("%s(%p, %p)\n", __FUNCTION__, (void*)a, (void*)b);
+
   gl_context_t *cxt = (gl_context_t*)b;
   if (b != nullptr) {
     // make the global context
@@ -135,6 +130,23 @@ int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppf
   wgl.pixelFormats.push_back(*ppfd);
   return wgl.pixelFormats.size();
 }
+
+HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
+  __debugbreak();
+  return (HGLRC)gl_context;
+}
+
+HDC __stdcall wglGetCurrentDC_imp(VOID) {
+  __debugbreak();
+  return gl_context ? gl_context->window.getHdc() : nullptr;
+}
+
+PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
+  PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
+  return proc;
+}
+
+// ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- 
 
 BOOL __stdcall wglCopyContext_imp(HGLRC a, HGLRC b, UINT c) {
   __debugbreak();

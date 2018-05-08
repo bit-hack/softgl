@@ -10,6 +10,18 @@ struct window_manager_t {
   {
   }
 
+  uint32_t width() const {
+    RECT r;
+    GetClientRect(_hwnd, &r);
+    return r.right;
+  }
+
+  uint32_t height() const {
+    RECT r;
+    GetClientRect(_hwnd, &r);
+    return r.bottom;
+  }
+
   // get window data
   HWND getHwnd() const { return _hwnd; }
   HDC getHdc() const { return _hdc; }

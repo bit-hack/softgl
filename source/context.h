@@ -28,7 +28,7 @@ struct gl_context_t {
     _aligned_free(ptr);
   }
 
-  gl_context_t(HWND hwnd, HDC hdc) : window(hwnd, hdc) {}
+  gl_context_t(HWND hwnd, HDC hdc);
 
   buffer_manager_t buffer;
   window_manager_t window;

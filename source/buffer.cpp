@@ -1,6 +1,12 @@
 #include "buffer.h"
 #include "context.h"
 
+buffer_manager_t::buffer_manager_t()
+  : _width(0)
+  , _height(0)
+{
+}
+
 void buffer_manager_t::resize(int32_t w, int32_t h) {
   _width = w;
   _height = h;

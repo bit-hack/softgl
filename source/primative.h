@@ -22,16 +22,12 @@ struct primative_manager_t {
   primative_manager_t()
     : _mode(GL_TRIANGLES)
     , _head(0)
+    , _begin_count(0)
   {}
 
-  void glBegin(GLenum mode) {
-    _mode = mode;
-    _vertex.clear();
-  }
+  void glBegin(GLenum mode);
 
-  void glEnd() {
-    _vertex.clear();
-  }
+  void glEnd();
 
   void add_vertex(const float4 v);
 
@@ -45,20 +41,18 @@ struct primative_manager_t {
 
 protected:
 
-  vertex_t _make_vertex(float4 v) {
-    return vertex_t{v};
-  }
+  vertex_t _make_vertex(float4 v);
 
-  void _do_quads(vertex_t t);
-
-  void _do_triangles(vertex_t t);
-
-  void _do_triangle_strip(vertex_t t);
-
-  void _do_triangle_fan(vertex_t t);
+  void _asm_quads();
+  void _asm_triangles();
+  void _asm_triangle_strip();
+  void _asm_triangle_fan();
+  void _asm_quad_strip();
+  void _asm_polygon();
 
   GLenum _mode;
   uint32_t _head;
+  int32_t _begin_count;
   std::vector<vertex_t> _vertex;
   std::vector<triangle_t> _triangles;
 };

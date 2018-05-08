@@ -3,6 +3,8 @@
 
 #include "context.h"
 #include "gdi_hook.h"
+#include "log.h"
+
 
 namespace {
 LRESULT CALLBACK trampoline(HWND hwnd, uint32_t msg, WPARAM w, LPARAM l) {
@@ -11,18 +13,40 @@ LRESULT CALLBACK trampoline(HWND hwnd, uint32_t msg, WPARAM w, LPARAM l) {
 } // namespace
 
 bool gdi_hook_t::unhook(gl_context_t &cxt) {
-  WNDPROC proc = procMap.at(cxt.window.getHwnd());
-  SetWindowLongPtrA(cxt.window.getHwnd(), GWL_WNDPROC, (LONG)proc);
+  log_t::printf("Unhooking context %p\n", &cxt);
+  {
+    auto itt = procMap.find(cxt.window.getHwnd());
+    if (itt != procMap.end()) {
+      WNDPROC proc = procMap.at(cxt.window.getHwnd());
+      SetWindowLongPtrA(cxt.window.getHwnd(), GWL_WNDPROC, (LONG)proc);
+      procMap.erase(itt);
+      log_t::printf("Context was unhooked %p\n", &cxt);
+    }
+  }
+  {
+    for (auto itt = context.begin(); itt != context.end();) {
+      if (itt->second == &cxt) {
+        itt = context.erase(itt);
+      }
+      else {
+        ++itt;
+      }
+    }
+  }
   return true;
 }
 
 bool gdi_hook_t::hook(gl_context_t &cxt) {
 
+  log_t::printf("Hooking context %p\n", &cxt);
+
   // check if context already hooked
-  for (const auto itt : context)
-    if (&cxt == itt.second)
+  for (const auto itt : context) {
+    if (&cxt == itt.second) {
       // context already hooked
       return true;
+    }
+  }
 
   // save the context
   HWND hwnd = cxt.window.getHwnd();

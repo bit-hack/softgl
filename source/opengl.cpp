@@ -47,8 +47,7 @@ void __stdcall glBegin(GLenum mode) {
   assert(Context);
   auto &cxt = *Context;
   // save primative mode
-  cxt.state.beginMode = mode;
-//  DEBUG_BREAK;
+  Context->primative.glBegin(mode);
 }
 
 void __stdcall glBindTexture(GLenum target, GLuint texture) {
@@ -441,7 +440,7 @@ void __stdcall glEnableClientState(GLenum array) {
 
 void __stdcall glEnd(void) {
   //
-//  DEBUG_BREAK;
+  Context->primative.glEnd();
 }
 
 void __stdcall glEndList(void) {

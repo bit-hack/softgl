@@ -7,6 +7,8 @@
 
 struct buffer_manager_t {
 
+  buffer_manager_t();
+
   void resize(int32_t w, int32_t h);
 
   uint32_t width() const {
@@ -22,10 +24,12 @@ struct buffer_manager_t {
   }
 
   float *depth() const {
+    assert(_depth);
     return _depth.get();
   }
 
   surface_t &surface() {
+    assert(_pixels);
     return _surface;
   }
 

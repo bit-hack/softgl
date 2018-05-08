@@ -4,6 +4,14 @@
 #include "gdi_hook.h"
 
 
+gl_context_t::gl_context_t(HWND hwnd, HDC hdc)
+  : window(hwnd, hdc) {
+
+  buffer.resize(window.width(),
+                window.height());
+}
+
+
 void gl_context_t::on_flush() {
 #if 0
   // get viewport center offset
@@ -50,9 +58,9 @@ void gl_context_t::on_flush() {
         transform(t.vert[2].coord),
     };
 
-    buffer.surface().line(c[0], c[1], 0xffffff);
-    buffer.surface().line(c[1], c[2], 0xffffff);
-    buffer.surface().line(c[2], c[0], 0xffffff);
+    buffer.surface().wuline(c[0], c[1], 0xffffff);
+    buffer.surface().wuline(c[1], c[2], 0xffffff);
+    buffer.surface().wuline(c[2], c[0], 0xffffff);
   }
   primative.clear_triangles();
 #endif
