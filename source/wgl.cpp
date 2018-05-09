@@ -131,19 +131,18 @@ int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppf
   return wgl.pixelFormats.size();
 }
 
-HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
-  __debugbreak();
-  return (HGLRC)gl_context;
-}
-
 HDC __stdcall wglGetCurrentDC_imp(VOID) {
-  __debugbreak();
   return gl_context ? gl_context->window.getHdc() : nullptr;
 }
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
   PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
   return proc;
+}
+
+HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
+  __debugbreak();
+  return (HGLRC)gl_context;
 }
 
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- 
@@ -217,6 +216,6 @@ DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b) {
   return 0;
 }
 
-const char *wglGetExtensionsStringARB_imp(HDC hdc) {
+const char * __stdcall wglGetExtensionsStringARB_imp(HDC hdc) {
   return "";
 }

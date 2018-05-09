@@ -371,4 +371,6 @@ BOOL  __stdcall wglSwapLayerBuffers_imp(HDC a, UINT b);
 DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b);
 BOOL  __stdcall wglSetPixelFormat_imp(HDC hdc, int iPixelFormat, const struct PIXELFORMATDESCRIPTOR *ppfd);
 int   __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppfd);
+
+const char * __stdcall wglGetExtensionsStringARB_imp(HDC hdc);
 } // extern "C"

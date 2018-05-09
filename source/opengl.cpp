@@ -609,8 +609,19 @@ void __stdcall glGetFloatv(GLenum pname, GLfloat *params) {
 }
 
 void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
-  //
-  DEBUG_BREAK;
+  switch (pname) {
+  case GL_MAX_TEXTURE_SIZE:
+    *params = 256;
+    break;
+  case GL_VIEWPORT:
+    params[0] = Context->state.viewport.x;
+    params[1] = Context->state.viewport.y;
+    params[2] = Context->state.viewport.w;
+    params[3] = Context->state.viewport.h;
+    break;
+  default:
+    DEBUG_BREAK;
+  }
 }
 
 void __stdcall glGetLightfv(GLenum light, GLenum pname, GLfloat *params) {
