@@ -153,8 +153,8 @@ BOOL __stdcall wglCopyContext_imp(HGLRC a, HGLRC b, UINT c) {
 }
 
 BOOL __stdcall wglShareLists_imp(HGLRC a, HGLRC b) {
-  __debugbreak();
-  return FALSE;
+  // note: UnrealGold expects this to return true
+  return TRUE;
 }
 
 HGLRC __stdcall wglCreateLayerContext_imp(HDC a, int b) {
