@@ -11,6 +11,7 @@
 #include "texture.h"
 #include "window.h"
 #include "primative.h"
+#include "raster.h"
 
 
 struct gl_context_t {
@@ -36,6 +37,7 @@ struct gl_context_t {
   texture_manager_t texture;
   state_manager_t state;
   primative_manager_t primative;
+  std::unique_ptr<i_raster_t> raster;
 
   void on_flush();
   void on_resize();

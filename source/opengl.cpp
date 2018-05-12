@@ -77,11 +77,11 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 }
 
 void __stdcall glClear(GLbitfield mask) {
-//  if (mask & GL_COLOR_BUFFER_BIT || 1) {
+  if (mask & GL_COLOR_BUFFER_BIT) {
     Context->buffer.surface().fill(0x202020);
-//  }
+  }
   if (mask & GL_DEPTH_BUFFER_BIT) {
-    // TODO
+    Context->buffer.clear_depth();
   }
 }
 
@@ -255,7 +255,7 @@ void __stdcall glColor4sv(const GLshort *v) {
 void __stdcall glColor4ub(GLubyte red, GLubyte green, GLubyte blue,
                           GLubyte alpha) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColor4ubv(const GLubyte *v) {
@@ -1650,7 +1650,7 @@ void __stdcall glTexImage2D(GLenum target, GLint level, GLint internalformat,
 
 void __stdcall glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameterfv(GLenum target, GLenum pname,

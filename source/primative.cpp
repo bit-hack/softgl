@@ -16,22 +16,22 @@ void primative_manager_t::glBegin(GLenum mode) {
 
 void primative_manager_t::glEnd() {
   switch (_mode) {
-  case GL_TRIANGLES:
-    _asm_triangles();  // untested
+  case GL_TRIANGLES:        // untested
+//    _asm_triangles();
     break;
   case GL_TRIANGLE_FAN:
     _asm_triangle_fan();
     break;
   case GL_TRIANGLE_STRIP:
-    _asm_triangle_strip();  // untested
+    _asm_triangle_strip();
     break;
-  case GL_QUADS:
-    _asm_quads();  // untested
+  case GL_QUADS:            // untested
+//    _asm_quads();
     break;
-  case GL_QUAD_STRIP:
-    _asm_quad_strip();  // untested
+  case GL_QUAD_STRIP:       // untested
+//    _asm_quad_strip();
     break;
-  case GL_POLYGON:  // untested
+  case GL_POLYGON:
     _asm_polygon();
     break;
   default:
@@ -61,21 +61,21 @@ void primative_manager_t::_asm_triangles() {
 
 void primative_manager_t::_asm_triangle_strip() {
   for (size_t i = 2; i < _vertex.size(); i += 1) {
-    const triangle_t tri = {
-      _vertex[i - 2 ^ (i & 1)],
-      _vertex[i - 1 ^ (i & 1)],
-      _vertex[i - 0]};
-    _triangles.push_back(tri);
+      const int32_t b = (i & 1);
+      const triangle_t tri = {
+        _vertex[i - 2],
+        _vertex[i - (1 ^ b)],
+        _vertex[i - (0 ^ b)]};
+      _triangles.push_back(tri);
   }
 }
 
 void primative_manager_t::_asm_triangle_fan() {
   for (size_t i = 2; i < _vertex.size(); i += 1) {
     const triangle_t tri = {
+      _vertex[0],
       _vertex[i - 1],
-      _vertex[i - 0],
-      _vertex[0]
-    };
+      _vertex[i - 0]};
     _triangles.push_back(tri);
   }
 }
@@ -110,6 +110,12 @@ void primative_manager_t::_asm_polygon() {
     _triangles.push_back(tri);
   }
 }
+
+static bool _is_backfacing(const float4 & a, const float4 & b, const float4 & c) {
+  // test z componant of cross product
+  return ( (c.x-a.x)*(c.y-b.y) - (c.x-b.x)*(c.y-a.y) ) > 0.f;
+}
+
 
 void primative_manager_t::clip_triangles() {
 
@@ -160,6 +166,14 @@ void primative_manager_t::clip_triangles() {
     const auto &v1 = t.vert[1];
     const auto &v2 = t.vert[2];
 
+#if 0
+    if (_is_backfacing(v0.coord, v1.coord, v2.coord)) {
+      // discard backfacing triangle
+      memset(&t, 0, sizeof(t));
+      continue;
+    }
+#endif
+
     // bit positive when behind near plane
     const int32_t c0 = (v0.coord.z <= -v0.coord.w) << 0;
     const int32_t c1 = (v1.coord.z <= -v1.coord.w) << 1;
@@ -204,5 +218,29 @@ void primative_manager_t::clip_triangles() {
     if (head >= 4)
       // append extra triangle
       _triangles.push_back(triangle_t{vert[0], vert[2], vert[3]});
+  }
+}
+
+void primative_manager_t::convert_to_dc() {
+
+  auto &viewport = Context->state.viewport;
+  // get viewport center offset
+  const float vp_x = viewport.w * .5f;
+  const float vp_y = viewport.h * .5f;
+
+  auto transform = [vp_x, vp_y](float4 &v) {
+    // homogenous perspective divide
+    v.x /= v.w;
+    v.y /= v.w;
+    v.z /= v.w;
+    // ndc -> dc coordinate
+    v.x = v.x * vp_x + vp_x;
+    v.y = v.y * vp_y + vp_y;
+  };
+
+  for (auto &t : _triangles) {
+    transform(t.vert[0].coord);
+    transform(t.vert[1].coord);
+    transform(t.vert[2].coord);
   }
 }

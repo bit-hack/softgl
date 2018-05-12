@@ -4,28 +4,23 @@
 
 #include "surface.h"
 
-
 struct buffer_manager_t {
 
   buffer_manager_t();
 
+  ~buffer_manager_t() { _release(); }
+
   void resize(int32_t w, int32_t h);
 
-  uint32_t width() const {
-    return _width;
-  }
+  uint32_t width() const { return _width; }
 
-  uint32_t height() const {
-    return _height;
-  }
+  uint32_t height() const { return _height; }
 
-  uint32_t *pixels() const {
-    return _pixels.get();
-  }
+  uint32_t *pixels() const { return _pixels; }
 
   float *depth() const {
     assert(_depth);
-    return _depth.get();
+    return _depth;
   }
 
   surface_t &surface() {
@@ -33,9 +28,20 @@ struct buffer_manager_t {
     return _surface;
   }
 
+  void clear_depth() {
+    const int32_t area = _width * _height;
+    const float *end = _depth + area;
+    float *ptr = _depth;
+    for (; ptr != end; ++ptr) {
+      *ptr = 0.f;
+    }
+  }
+
 protected:
+  void _release();
+
   uint32_t _width, _height;
-  std::unique_ptr<uint32_t[]> _pixels;
-  std::unique_ptr<float[]> _depth;
+  uint32_t *_pixels;
+  float *_depth;
   surface_t _surface;
 };

@@ -9,42 +9,14 @@ gl_context_t::gl_context_t(HWND hwnd, HDC hdc)
 
   buffer.resize(window.width(),
                 window.height());
+  raster.reset(raster_create());
 }
 
-
 void gl_context_t::on_flush() {
-  auto transform = [this](float4 v) -> float2 {
-    // get viewport center offset
-    const float vp_x = state.viewport.w * .5f;
-    const float vp_y = state.viewport.h * .5f;
-    // homogenous perspective divide
-    v.x /= v.w;
-    v.y /= v.w;
-    v.z /= v.w;
-    // ndc -> dc coordinate
-    return float2{vp_x + .5f * v.x * state.viewport.w,
-                  vp_y + .5f * v.y * state.viewport.h};
-  };
 
   primative.clip_triangles();
-
-  for (const auto &t : primative.triangles()) {
-
-    if (t.vert[0].coord.w == 0.f) {
-      // signals fully clipped vertex so discard
-      continue;
-    }
-
-    const std::array<float2, 3> c{
-        transform(t.vert[0].coord),
-        transform(t.vert[1].coord),
-        transform(t.vert[2].coord),
-    };
-
-    buffer.surface().wuline(c[0], c[1], 0xffffff);
-    buffer.surface().wuline(c[1], c[2], 0xffffff);
-    buffer.surface().wuline(c[2], c[0], 0xffffff);
-  }
+  primative.convert_to_dc();
+  raster->push_triangles(primative.triangles());
   primative.clear_triangles();
 }
 

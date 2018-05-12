@@ -40,6 +40,7 @@ struct primative_manager_t {
   }
 
   void clip_triangles();
+  void convert_to_dc();
 
 protected:
 

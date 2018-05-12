@@ -37,6 +37,7 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   Context->on_flush();
   GdiHook.invalidate(gl_context->window.getHwnd());
   Context->buffer.surface().fill(0x202020);
+  Context->buffer.clear_depth();
   return TRUE;
 }
 
@@ -73,9 +74,11 @@ BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
   GdiHook.unhook(*cxt);
   // erase the context
   auto itt = wgl.contexts.find(cxt);
-  log_t::printf("context deleted -> %p\n", (void*)*itt);
-  delete *itt;
-  wgl.contexts.erase(itt);
+  if (itt != wgl.contexts.end()) {
+    log_t::printf("context deleted -> %p\n", (void*)*itt);
+    delete *itt;
+    wgl.contexts.erase(itt);
+  }
   return TRUE;
 }
 
