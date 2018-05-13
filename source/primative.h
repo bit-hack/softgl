@@ -9,6 +9,7 @@
 
 struct vertex_t {
   float4 coord;
+  float2 tex;
 };
 
 
@@ -42,6 +43,15 @@ struct primative_manager_t {
   void clip_triangles();
   void convert_to_dc();
 
+  void latch_uv(float2 t) {
+    _latch_uv = t;
+  }
+
+  // int4 intead?
+  void latch_argb(float4 c) {
+    _latch_argb = c;
+  }
+
 protected:
 
   vertex_t _make_vertex(float4 v);
@@ -56,6 +66,8 @@ protected:
   GLenum _mode;
   uint32_t _head;
   int32_t _begin_count;
+  float2 _latch_uv;
+  float4 _latch_argb;
   std::vector<vertex_t> _vertex;
   std::vector<triangle_t> _triangles;
 };

@@ -1140,6 +1140,11 @@ typedef void GLvoid;
 #define GL_LOGIC_OP GL_INDEX_LOGIC_OP
 #define GL_TEXTURE_COMPONENTS GL_TEXTURE_INTERNAL_FORMAT
 
+/* GL_EXT_bgra extension */
+#define BGR_EXT                           0x80E0
+#define BGRA_EXT                          0x80E1
+
 /*************************************************************/
 
 #endif /* __GL_H__ */
+

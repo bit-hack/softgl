@@ -1,6 +1,7 @@
 LIBRARY OPENGL32
 EXPORTS
     glAccum
+    glActiveTexture
     glAlphaFunc
     glAreTexturesResident
     glArrayElement
@@ -361,3 +362,4 @@ EXPORTS
     wglChoosePixelFormat=wglChoosePixelFormat_imp
     wglSetPixelFormat=wglSetPixelFormat_imp 
     wglGetExtensionsStringARB=wglGetExtensionsStringARB_imp
+    wglDescribePixelFormat=wglDescribePixelFormat_imp

@@ -3,7 +3,7 @@
 #include "primative.h"
 
 vertex_t primative_manager_t::_make_vertex(float4 f) {
-  return vertex_t{f};
+  return vertex_t{f, _latch_uv};
 }
 
 void primative_manager_t::glBegin(GLenum mode) {

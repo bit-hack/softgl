@@ -8,6 +8,7 @@
 
 #include <Windows.h>
 
+#include "common.h"
 #include "wgl.h"
 #include "game_id.h"
 #include "gdi_hook.h"
@@ -134,6 +135,48 @@ int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppf
   return wgl.pixelFormats.size();
 }
 
+int __stdcall wglDescribePixelFormat_imp(HDC hdc, int iPixelFormat, UINT nBytes,
+                                         LPPIXELFORMATDESCRIPTOR ppfd) {
+  DEBUG_BREAK;
+  if (iPixelFormat <= 0 || iPixelFormat > wgl.pixelFormats.size()) {
+    return 0;
+  }
+  if (ppfd) {
+    const auto &fmt = wgl.pixelFormats.at(iPixelFormat-1);
+    nBytes = std::min<size_t>(nBytes, sizeof(tagPIXELFORMATDESCRIPTOR));
+    memcpy(ppfd, &fmt, nBytes);
+    ppfd->nSize = sizeof(*ppfd);
+    ppfd->nVersion = 1;
+    if (!ppfd->dwFlags)
+      ppfd->dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+    ppfd->iPixelType = PFD_TYPE_RGBA;
+#if 1
+    if (!ppfd->cColorBits)
+      ppfd->cColorBits = 32; // some games may want 24 here
+    if (!ppfd->cDepthBits)
+      ppfd->cDepthBits = 24;
+#endif
+    ppfd->cAccumBits = 0;
+    ppfd->cAccumAlphaBits = 8;
+    ppfd->cStencilBits = 8;
+    ppfd->cRedBits = 8;
+    ppfd->cRedShift = 0;
+    ppfd->cGreenBits = 8;
+    ppfd->cGreenShift = 8;
+    ppfd->cBlueBits = 8;
+    ppfd->cBlueShift = 16;
+    ppfd->cAlphaBits = 8;
+    ppfd->cAlphaShift = 24;
+    if (!ppfd->cStencilBits)
+      ppfd->cStencilBits = 8;
+    if (!ppfd->cAuxBuffers)
+      ppfd->cAuxBuffers = 4;
+    if (!ppfd->iPixelType)
+      ppfd->iPixelType = PFD_TYPE_RGBA;
+  }
+  return wgl.pixelFormats.size();
+}
+
 HDC __stdcall wglGetCurrentDC_imp(VOID) {
   return gl_context ? gl_context->window.getHdc() : nullptr;
 }
@@ -151,7 +194,7 @@ HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
 // ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- ---- 
 
 BOOL __stdcall wglCopyContext_imp(HGLRC a, HGLRC b, UINT c) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
@@ -161,61 +204,62 @@ BOOL __stdcall wglShareLists_imp(HGLRC a, HGLRC b) {
 }
 
 HGLRC __stdcall wglCreateLayerContext_imp(HDC a, int b) {
-  __debugbreak();
+  DEBUG_BREAK;
   return 0;
 }
 
 BOOL __stdcall wglUseFontBitmapsA_imp(HDC a, DWORD b, DWORD c, DWORD d) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
 BOOL __stdcall wglUseFontBitmapsW_imp(HDC a, DWORD b, DWORD c, DWORD d) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
 BOOL __stdcall wglUseFontOutlinesA_imp(HDC a, DWORD b, DWORD c, DWORD d, FLOAT e,
                                   FLOAT f, int g, LPGLYPHMETRICSFLOAT h) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
 BOOL __stdcall wglUseFontOutlinesW_imp(HDC a, DWORD b, DWORD c, DWORD d, FLOAT e,
                                   FLOAT f, int g, LPGLYPHMETRICSFLOAT h) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
 BOOL __stdcall wglDescribeLayerPlane_imp(HDC a, int b, int c, UINT d,
                                     LPLAYERPLANEDESCRIPTOR e) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
 int __stdcall wglSetLayerPaletteEntries_imp(HDC a, int b, int c, int d,
                                        CONST COLORREF *e) {
-  __debugbreak();
+  DEBUG_BREAK;
   return 0;
 }
 
 int __stdcall wglGetLayerPaletteEntries_imp(HDC a, int b, int c, int d,
                                        COLORREF *e) {
-  __debugbreak();
+  DEBUG_BREAK;
   return 0;
 }
 
 BOOL __stdcall wglRealizeLayerPalette_imp(HDC a, int b, BOOL c) {
+  DEBUG_BREAK;
   return FALSE;
 }
 
 BOOL __stdcall wglSwapLayerBuffers_imp(HDC a, UINT b) {
-  __debugbreak();
+  DEBUG_BREAK;
   return FALSE;
 }
 
 DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b) {
-  __debugbreak();
+  DEBUG_BREAK;
   return 0;
 }
 

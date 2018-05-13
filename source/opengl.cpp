@@ -1,6 +1,7 @@
 #include <cassert>
 #include <stdint.h>
 
+#include "common.h"
 #include "GL.h"
 #include "context.h"
 #include "exports.h"
@@ -8,22 +9,12 @@
 #include "matrix.h"
 
 
-#if 1
-#define DEBUG_BREAK                 \
-  {                                 \
-    static bool once=true;          \
-    if (once) {                     \
-      __debugbreak();               \
-      once = false;                 \
-      printf("%s\n", __FUNCTION__); \
-    }                               \
-  }
-#else
-#define DEBUG_BREAK
-#endif
-
-
 void __stdcall glAccum(GLenum op, GLfloat value) {
+  //
+  DEBUG_BREAK;
+}
+
+void __stdcall glActiveTexture(GLenum texture) {
   //
   DEBUG_BREAK;
 }
@@ -140,13 +131,11 @@ void __stdcall glColor3dv(const GLdouble *v) {
 }
 
 void __stdcall glColor3f(GLfloat red, GLfloat green, GLfloat blue) {
-  //
-//  DEBUG_BREAK;
+  Context->primative.latch_argb(float4{0.f, red, green, blue});
 }
 
 void __stdcall glColor3fv(const GLfloat *v) {
-  //
-  DEBUG_BREAK;
+  Context->primative.latch_argb(float4{0.f, v[0], v[1], v[2]});
 }
 
 void __stdcall glColor3i(GLint red, GLint green, GLint blue) {
@@ -222,13 +211,11 @@ void __stdcall glColor4dv(const GLdouble *v) {
 
 void __stdcall glColor4f(GLfloat red, GLfloat green, GLfloat blue,
                          GLfloat alpha) {
-  //
-//  DEBUG_BREAK;
+  Context->primative.latch_argb(float4{alpha, red, green, blue});
 }
 
 void __stdcall glColor4fv(const GLfloat *v) {
-  //
-//  DEBUG_BREAK;
+  Context->primative.latch_argb(float4{v[3], v[0], v[1], v[2]});
 }
 
 void __stdcall glColor4i(GLint red, GLint green, GLint blue, GLint alpha) {
@@ -614,10 +601,22 @@ void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
     *params = 256;
     break;
   case GL_VIEWPORT:
-    params[0] = Context->state.viewport.x;
-    params[1] = Context->state.viewport.y;
-    params[2] = Context->state.viewport.w;
-    params[3] = Context->state.viewport.h;
+    params[0] = GLint(Context->state.viewport.x);
+    params[1] = GLint(Context->state.viewport.y);
+    params[2] = GLint(Context->state.viewport.w);
+    params[3] = GLint(Context->state.viewport.h);
+    break;
+  case GL_DEPTH_BITS: // UT2003 wants this
+    *params = 24;
+    break;
+  case GL_STENCIL_BITS: // UT2003 wants this
+    *params = 8;
+    break;
+  case GL_RED_BITS:
+  case GL_GREEN_BITS:
+  case GL_BLUE_BITS:
+  case GL_ALPHA_BITS:
+    *params = 8;
     break;
   default:
     DEBUG_BREAK;
@@ -690,11 +689,11 @@ const GLubyte *__stdcall glGetString(GLenum name) {
   case GL_VENDOR:
     return (GLubyte *)"8BitPimp";
   case GL_RENDERER:
-    return (GLubyte *)"nanogl";
-  case GL_VERSION:
-    return (GLubyte *)"v0.01";
-  case GL_EXTENSIONS:
-    return (GLubyte *)"";
+    return (GLubyte *)"SoftGL";
+  case GL_VERSION: // specifies opengl version
+    return (GLubyte *)"2.0";
+  case GL_EXTENSIONS: // space-separated list of supported extensions
+    return (const GLubyte *)"GL_EXT_bgra GL_EXT_abgr";
   default:
     return (GLubyte *)"";
   }
@@ -1469,13 +1468,11 @@ void __stdcall glTexCoord2dv(const GLdouble *v) {
 }
 
 void __stdcall glTexCoord2f(GLfloat s, GLfloat t) {
-  //
-//  DEBUG_BREAK;
+  Context->primative.latch_uv(float2{s, t});
 }
 
 void __stdcall glTexCoord2fv(const GLfloat *v) {
-  //
-  DEBUG_BREAK;
+  Context->primative.latch_uv(float2{v[0], v[1]});
 }
 
 void __stdcall glTexCoord2i(GLint s, GLint t) {
@@ -1641,11 +1638,11 @@ void __stdcall glTexImage1D(GLenum target, GLint level, GLint internalformat,
   DEBUG_BREAK;
 }
 
-void __stdcall glTexImage2D(GLenum target, GLint level, GLint internalformat,
+void __stdcall glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                             GLsizei width, GLsizei height, GLint border,
                             GLenum format, GLenum type, const GLvoid *pixels) {
-  // XXX: Save these out to disk, hash pixels ...
-//  DEBUG_BREAK;
+  Context->texture.glTexImage2D(target, level, internalFormat, width,
+                                height, border, format, type, pixels);
 }
 
 void __stdcall glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
@@ -1673,8 +1670,7 @@ void __stdcall glTexParameteriv(GLenum target, GLenum pname,
 void __stdcall glTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                                GLsizei width, GLenum format, GLenum type,
                                const GLvoid *pixels) {
-  //
-  DEBUG_BREAK;
+  Context->texture.glTexSubImage1D(target, level, xoffset, width, format, type, pixels);
 }
 
 void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
@@ -1813,11 +1809,7 @@ void __stdcall glVertexPointer(GLint size, GLenum type, GLsizei stride,
 }
 
 void __stdcall glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
-  Context->state.viewport = rectf_t{
-    float(x),
-    float(y),
-    float(w),
-    float(h)};
+  Context->state.viewport = rectf_t{float(x), float(y), float(w), float(h)};
 }
 
 void __stdcall glPushAttrib(GLbitfield mask) {
