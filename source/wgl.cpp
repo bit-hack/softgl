@@ -137,7 +137,6 @@ int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppf
 
 int __stdcall wglDescribePixelFormat_imp(HDC hdc, int iPixelFormat, UINT nBytes,
                                          LPPIXELFORMATDESCRIPTOR ppfd) {
-  DEBUG_BREAK;
   if (iPixelFormat <= 0 || iPixelFormat > wgl.pixelFormats.size()) {
     return 0;
   }

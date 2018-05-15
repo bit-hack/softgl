@@ -52,9 +52,23 @@ struct primative_manager_t {
     _latch_argb = c;
   }
 
+  void glVertexPointer(GLint size, GLenum type, GLsizei stride,
+                       const GLvoid *pointer);
+
+  void glColorPointer(GLint size, GLenum type, GLsizei stride,
+                      const GLvoid *pointer);
+
+  void glTexCoordPointer(GLint size, GLenum type, GLsizei stride,
+                         const GLvoid *pointer);
+
+  void glDrawElements(GLenum mode, GLsizei count, GLenum type,
+                      const GLvoid *indices);
+
+  void glArrayElement(GLint i);
+
 protected:
 
-  vertex_t _make_vertex(float4 v);
+  void _push_vertex(const vertex_t &v);
 
   void _asm_quads();
   void _asm_triangles();
@@ -63,11 +77,23 @@ protected:
   void _asm_quad_strip();
   void _asm_polygon();
 
+  struct array_t {
+    GLenum _type;
+    GLsizei _stride;
+    GLint _size;
+    const void *_pointer;
+  };
+
+  array_t _array_vertex;
+  array_t _array_color;
+  array_t _array_tex_coord;
+
   GLenum _mode;
-  uint32_t _head;
   int32_t _begin_count;
   float2 _latch_uv;
   float4 _latch_argb;
+
+  uint32_t _head;
   std::vector<vertex_t> _vertex;
   std::vector<triangle_t> _triangles;
 };

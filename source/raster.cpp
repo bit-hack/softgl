@@ -192,6 +192,8 @@ struct raster_wire_t : public i_raster_t {
         continue;
       }
 
+      // XXX: insert edge into edge list to avoid redraw
+
       const std::array<float2, 3> c{
           float2{t.vert[0].coord.x, t.vert[0].coord.y},
           float2{t.vert[1].coord.x, t.vert[1].coord.y},
@@ -210,7 +212,7 @@ struct raster_wire_t : public i_raster_t {
 
 
 i_raster_t * raster_create() {
-#if 1
+#if 0
   return new raster_imp_t;
 #else
   return new raster_wire_t;

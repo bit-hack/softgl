@@ -30,8 +30,7 @@ GLboolean __stdcall glAreTexturesResident(GLsizei n, const GLuint *textures,
 }
 
 void __stdcall glArrayElement(GLint i) {
-  //
-  DEBUG_BREAK;
+  Context->primative.glArrayElement(i);
 }
 
 void __stdcall glBegin(GLenum mode) {
@@ -274,7 +273,7 @@ void __stdcall glColor4usv(const GLushort *v) {
 void __stdcall glColorMask(GLboolean red, GLboolean green, GLboolean blue,
                            GLboolean alpha) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColorMaterial(GLenum face, GLenum mode) {
@@ -284,8 +283,7 @@ void __stdcall glColorMaterial(GLenum face, GLenum mode) {
 
 void __stdcall glColorPointer(GLint size, GLenum type, GLsizei stride,
                               const GLvoid *pointer) {
-  //
-  DEBUG_BREAK;
+  Context->primative.glColorPointer(size, type, stride, pointer);
 }
 
 void __stdcall glCopyPixels(GLint x, GLint y, GLsizei width, GLsizei height,
@@ -383,8 +381,7 @@ void __stdcall glDrawBuffer(GLenum mode) {
 
 void __stdcall glDrawElements(GLenum mode, GLsizei count, GLenum type,
                               const GLvoid *indices) {
-  //
-  DEBUG_BREAK;
+  Context->primative.glDrawElements(mode, count, type, indices);
 }
 
 void __stdcall glDrawPixels(GLsizei width, GLsizei height, GLenum format,
@@ -422,7 +419,7 @@ void __stdcall glEnable(GLenum cap) {
 
 void __stdcall glEnableClientState(GLenum array) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glEnd(void) {
@@ -598,7 +595,7 @@ void __stdcall glGetFloatv(GLenum pname, GLfloat *params) {
 void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
   switch (pname) {
   case GL_MAX_TEXTURE_SIZE:
-    *params = 256;
+    *params = 512;
     break;
   case GL_VIEWPORT:
     params[0] = GLint(Context->state.viewport.x);
@@ -1139,7 +1136,7 @@ void __stdcall glPolygonMode(GLenum face, GLenum mode) {
 
 void __stdcall glPolygonOffset(GLfloat factor, GLfloat units) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glPolygonStipple(const GLubyte *mask) {
@@ -1577,8 +1574,7 @@ void __stdcall glTexCoord4sv(const GLshort *v) {
 
 void __stdcall glTexCoordPointer(GLint size, GLenum type, GLsizei stride,
                                  const GLvoid *pointer) {
-  //
-  DEBUG_BREAK;
+  Context->primative.glTexCoordPointer(size, type, stride, pointer);
 }
 
 void __stdcall glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
@@ -1804,11 +1800,11 @@ void __stdcall glVertex4sv(const GLshort *v) {
 
 void __stdcall glVertexPointer(GLint size, GLenum type, GLsizei stride,
                                const GLvoid *pointer) {
-  //
-  DEBUG_BREAK;
+  Context->primative.glVertexPointer(size, type, stride, pointer);
 }
 
 void __stdcall glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
+  Context->on_flush();
   Context->state.viewport = rectf_t{float(x), float(y), float(w), float(h)};
 }
 

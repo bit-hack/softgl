@@ -1,9 +1,11 @@
+#include "common.h"
 #include "context.h"
-
 #include "primative.h"
 
-vertex_t primative_manager_t::_make_vertex(float4 f) {
-  return vertex_t{f, _latch_uv};
+
+void primative_manager_t::_push_vertex(const vertex_t &v) {
+  _vertex.emplace_back(v);
+  _vertex.back().coord = Context->matrix.transform(v.coord);
 }
 
 void primative_manager_t::glBegin(GLenum mode) {
@@ -23,6 +25,7 @@ void primative_manager_t::glEnd() {
     _asm_triangle_fan();
     break;
   case GL_TRIANGLE_STRIP:
+    // note: used almost exclusively by quake3
     _asm_triangle_strip();
     break;
   case GL_QUADS:            // untested
@@ -45,8 +48,7 @@ void primative_manager_t::glEnd() {
 }
 
 void primative_manager_t::add_vertex(const float4 v) {
-  const float4 tv = Context->matrix.transform(v);
-  _vertex.push_back(_make_vertex(tv));
+  _push_vertex(vertex_t{v, _latch_uv});
 }
 
 void primative_manager_t::_asm_triangles() {
@@ -225,17 +227,19 @@ void primative_manager_t::convert_to_dc() {
 
   auto &viewport = Context->state.viewport;
   // get viewport center offset
-  const float vp_x = viewport.w * .5f;
-  const float vp_y = viewport.h * .5f;
+  const float vx = viewport.x;
+  const float vy = viewport.y;
+  const float vw = viewport.w * .5f;
+  const float vh = viewport.h * .5f;
 
-  auto transform = [vp_x, vp_y](float4 &v) {
+  auto transform = [vx,vy, vw, vh](float4 &v) {
     // homogenous perspective divide
     v.x /= v.w;
     v.y /= v.w;
     v.z /= v.w;
     // ndc -> dc coordinate
-    v.x = v.x * vp_x + vp_x;
-    v.y = v.y * vp_y + vp_y;
+    v.x = vx + (v.x * vw + vw);
+    v.y = vy + (v.y * vh + vh);
   };
 
   for (auto &t : _triangles) {
@@ -243,4 +247,74 @@ void primative_manager_t::convert_to_dc() {
     transform(t.vert[1].coord);
     transform(t.vert[2].coord);
   }
+}
+
+void primative_manager_t::glVertexPointer(GLint size, GLenum type,
+                                          GLsizei stride,
+                                          const GLvoid *pointer) {
+  if (stride == 0) {
+    switch (type) {
+    case GL_FLOAT:
+      stride = size * sizeof(float);
+      break;
+    default:
+      DEBUG_BREAK;
+    }
+  }
+
+  _array_vertex._size = size;
+  _array_vertex._type = type;
+  _array_vertex._stride = stride;
+  _array_vertex._pointer = (const void *)pointer;
+}
+
+void primative_manager_t::glColorPointer(GLint size, GLenum type,
+                                         GLsizei stride,
+                                         const GLvoid *pointer) {
+  _array_color._size = size;
+  _array_color._type = type;
+  _array_color._stride = stride;
+  _array_color._pointer = (const void *)pointer;
+}
+
+void primative_manager_t::glTexCoordPointer(GLint size, GLenum type,
+                                            GLsizei stride,
+                                            const GLvoid *pointer) {
+  _array_tex_coord._size = size;
+  _array_tex_coord._type = type;
+  _array_tex_coord._stride = stride;
+  _array_tex_coord._pointer = (const void *)pointer;
+}
+
+void primative_manager_t::glArrayElement(GLint i) {
+  float4 v;
+  float2 t = float2{0.f, 0.f};
+  // support gl float vertex element type
+  if (_array_vertex._type != GL_FLOAT)
+    DEBUG_BREAK;
+  // find vertex
+  const uint8_t *f = (const uint8_t *)_array_vertex._pointer;
+  f += i * _array_vertex._stride;
+  const float *a = (const float *)f;
+  // form vertices
+  switch (_array_vertex._size) {
+  case 2:
+    v = float4{a[0], a[1], 0.f, 1.f};
+    break;
+  case 3:
+    v = float4{a[0], a[1], a[2], 1.f};
+    break;
+  case 4:
+    v = float4{a[0], a[1], a[2], a[3]};
+    break;
+  default:
+    DEBUG_BREAK;
+  }
+  // push vertex
+  _push_vertex(vertex_t{v, t});
+}
+
+void primative_manager_t::glDrawElements(GLenum mode, GLsizei count,
+                                         GLenum type, const GLvoid *indices) {
+  DEBUG_BREAK;
 }
