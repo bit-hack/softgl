@@ -25,8 +25,6 @@ void buffer_manager_t::resize(int32_t w, int32_t h) {
 
   _pixels = (uint32_t *)_aligned_malloc(w * h * sizeof(uint32_t), 16);
   _depth = (float *)_aligned_malloc(w * h * sizeof(float), 16);
-  // refresh drawing surface
-  _surface = surface_t{_pixels, uint32_t(w), uint32_t(h), uint32_t(w)};
   // notify context of resize
   if (Context) {
     Context->on_resize();

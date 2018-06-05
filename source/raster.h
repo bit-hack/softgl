@@ -1,11 +1,14 @@
 #pragma once
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
 #include "primative.h"
 #include "buffer.h"
 
-struct context_t;
 
+struct gl_context_t;
 
-struct i_raster_t {
+struct raster_t {
 
   // stop any use of old framebuffer
   virtual void framebuffer_release() = 0;
@@ -14,7 +17,7 @@ struct i_raster_t {
   virtual void framebuffer_aquire() = 0;
 
   // spin up the rasterizer
-  virtual void start(context_t &cxt) = 0;
+  virtual void start(gl_context_t &cxt) = 0;
 
   // kill the rasterizer
   virtual void stop() = 0;
@@ -25,4 +28,27 @@ struct i_raster_t {
   virtual void flip() = 0;
 };
 
-i_raster_t * raster_create();
+
+typedef raster_t *(*rast_create_t)();
+typedef void(*rast_release_t)(raster_t*);
+
+
+struct raster_module_t {
+
+  raster_module_t()
+    : handle(nullptr)
+    , create(nullptr)
+    , release(nullptr)
+    , inst(nullptr)
+  {
+  }
+
+  HMODULE handle;
+  rast_create_t create;
+  rast_release_t release;
+  raster_t *inst;
+};
+
+
+// load a rasterization dll
+bool raster_load(raster_module_t &out);

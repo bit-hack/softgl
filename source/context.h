@@ -37,7 +37,7 @@ struct gl_context_t {
   texture_manager_t texture;
   state_manager_t state;
   primative_manager_t primative;
-  std::unique_ptr<i_raster_t> raster;
+  raster_module_t raster;
 
   void on_flush();
   void on_resize();

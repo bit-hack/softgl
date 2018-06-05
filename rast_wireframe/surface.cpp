@@ -1,8 +1,11 @@
 #include <algorithm>
-#include <math.h>
+
+#include <cassert>
+#include <cmath>
 
 #include "surface.h"
 #include "math.h"
+
 
 namespace {
 

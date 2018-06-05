@@ -1,8 +1,9 @@
 #pragma once
-#include <memory>
+#include <cassert>
 #include <cstdint>
 
-#include "surface.h"
+#include <memory>
+
 
 struct buffer_manager_t {
 
@@ -23,9 +24,13 @@ struct buffer_manager_t {
     return _depth;
   }
 
-  surface_t &surface() {
-    assert(_pixels);
-    return _surface;
+  void clear_colour(const uint32_t rgb) {
+    const int32_t area = _width * _height;
+    const uint32_t *end = _pixels + area;
+    uint32_t *ptr = _pixels;
+    for (; ptr != end; ++ptr) {
+      *ptr = rgb;
+    }
   }
 
   void clear_depth() {
@@ -43,5 +48,4 @@ protected:
   uint32_t _width, _height;
   uint32_t *_pixels;
   float *_depth;
-  surface_t _surface;
 };

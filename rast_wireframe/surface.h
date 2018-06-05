@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cassert>
 
-#include "math.h"
+#include "../source/math.h"
 
 
 struct surface_t {

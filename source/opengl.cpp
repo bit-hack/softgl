@@ -68,7 +68,7 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 
 void __stdcall glClear(GLbitfield mask) {
   if (mask & GL_COLOR_BUFFER_BIT) {
-    Context->buffer.surface().fill(0x202020);
+    Context->buffer.clear_colour(0x202020);
   }
   if (mask & GL_DEPTH_BUFFER_BIT) {
     Context->buffer.clear_depth();

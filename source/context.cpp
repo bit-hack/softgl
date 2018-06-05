@@ -1,22 +1,21 @@
 #include "context.h"
-#include "surface.h"
 #include "matrix.h"
 #include "gdi_hook.h"
 
-
 gl_context_t::gl_context_t(HWND hwnd, HDC hdc)
-  : window(hwnd, hdc) {
-
-  buffer.resize(window.width(),
-                window.height());
-  raster.reset(raster_create());
+  : window(hwnd, hdc)
+{
+  buffer.resize(window.width(), window.height());
+  raster_load(raster);
+  raster.inst->start(*this);
 }
 
 void gl_context_t::on_flush() {
-
   primative.clip_triangles();
   primative.convert_to_dc();
-  raster->push_triangles(primative.triangles());
+  if (raster.inst) {
+    raster.inst->push_triangles(primative.triangles());
+  }
   primative.clear_triangles();
 }
 
