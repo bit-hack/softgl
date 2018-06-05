@@ -227,10 +227,10 @@ void primative_manager_t::convert_to_dc() {
 
   auto &viewport = Context->state.viewport;
   // get viewport center offset
-  const float vx = viewport.x;
-  const float vy = viewport.y;
-  const float vw = viewport.w * .5f;
-  const float vh = viewport.h * .5f;
+  const float vx = viewport.x0;
+  const float vy = viewport.y0;
+  const float vw = viewport.dx() * .5f;
+  const float vh = viewport.dy() * .5f;
 
   auto transform = [vx,vy, vw, vh](float4 &v) {
     // homogenous perspective divide

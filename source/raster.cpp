@@ -17,7 +17,7 @@ bool raster_load(raster_module_t &dll) {
     "softgl_rast_reference.dll"
   };
 
-  dll.handle = LoadLibraryA(dll_name[1]);
+  dll.handle = LoadLibraryA(dll_name[0]);
   if (!dll.handle) {
     return nullptr;
   }

@@ -2,11 +2,7 @@
 #include <cstdint>
 
 #include "GL.h"
-
-
-struct rectf_t {
-  float x, y, w, h;
-};
+#include "common.h"
 
 struct state_manager_t {
   GLenum beginMode;

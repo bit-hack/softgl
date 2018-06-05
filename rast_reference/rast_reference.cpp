@@ -125,24 +125,20 @@ void drawTri(const frame_t &frame, const float4 &v0, const float4 &v1,
 
 struct rast_reference_t : public raster_t {
 
-  // stop any use of old framebuffer
   void framebuffer_release() override {}
 
-  // attach new framebuffer
   void framebuffer_aquire() override {}
 
-  // spin up the rasterizer
   void start(gl_context_t &cxt) override { _cxt = &cxt; }
 
-  // kill the rasterizer
   void stop() override {}
 
   void push_triangles(const std::vector<triangle_t> &triangles) override {
 
     frame_t frame;
     frame._pixels = _cxt->buffer.pixels();
-    frame._depth = _cxt->buffer.depth();
-    frame._width = _cxt->buffer.width();
+    frame._depth  = _cxt->buffer.depth();
+    frame._width  = _cxt->buffer.width();
     frame._height = _cxt->buffer.height();
 
     for (const auto &t : triangles) {
@@ -155,8 +151,9 @@ struct rast_reference_t : public raster_t {
     }
   }
 
-  // flip screen buffer
-  void flip() override {}
+  void flush() override {}
+
+  void present() override {}
 
 protected:
   gl_context_t *_cxt;

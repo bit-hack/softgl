@@ -22,10 +22,14 @@ struct raster_t {
   // kill the rasterizer
   virtual void stop() = 0;
 
+  // push triangles to the rasterizer
   virtual void push_triangles(const std::vector<triangle_t> &triangles) = 0;
 
-  // flip screen buffer
-  virtual void flip() = 0;
+  // pipeline is being flushed
+  virtual void flush() = 0;
+
+  // present screen buffer
+  virtual void present() = 0;
 };
 
 

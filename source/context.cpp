@@ -17,6 +17,7 @@ void gl_context_t::on_flush() {
     raster.inst->push_triangles(primative.triangles());
   }
   primative.clear_triangles();
+  raster.inst->flush();
 }
 
 void gl_context_t::on_resize() {

@@ -1,6 +1,15 @@
+#include <unordered_set>
+
 #include "../source/raster.h"
 #include "../source/context.h"
 #include "surface.h"
+
+
+struct line_t {
+  float2 a, b;
+
+  line_t(float2 i, float2 j) : a(i), b(j) {}
+};
 
 
 struct raster_wire_t : public raster_t {
@@ -9,18 +18,14 @@ struct raster_wire_t : public raster_t {
     : _cxt(nullptr)
   {}
 
-  // stop any use of old framebuffer
   void framebuffer_release() override {}
 
-  // attach new framebuffer
   void framebuffer_aquire() override {}
 
-  // spin up the rasterizer
   void start(gl_context_t &cxt) override {
     _cxt = &cxt;
   }
 
-  // kill the rasterizer
   void stop() override {}
 
   void push_triangles(const std::vector<triangle_t> &triangles) override {
@@ -49,9 +54,11 @@ struct raster_wire_t : public raster_t {
     }
   }
 
-  // flip screen buffer
-  void flip() override {}
+  void flush() override {}
 
+  void present() override {}
+
+protected:
   gl_context_t *_cxt;
 };
 

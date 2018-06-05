@@ -1,6 +1,7 @@
 #pragma once
 
+#include "forward.h"
 #include "windows.h"
 #include "GL.h"
 
-struct gl_context_t *getContext();
+gl_context_t *getContext();

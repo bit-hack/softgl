@@ -21,7 +21,6 @@ void __stdcall glActiveTexture(GLenum texture) {
 
 void __stdcall glAlphaFunc(GLenum func, GLclampf ref) {
   //
-//  DEBUG_BREAK;
 }
 
 GLboolean __stdcall glAreTexturesResident(GLsizei n, const GLuint *textures,
@@ -241,12 +240,10 @@ void __stdcall glColor4sv(const GLshort *v) {
 void __stdcall glColor4ub(GLubyte red, GLubyte green, GLubyte blue,
                           GLubyte alpha) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glColor4ubv(const GLubyte *v) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glColor4ui(GLuint red, GLuint green, GLuint blue, GLuint alpha) {
@@ -273,7 +270,6 @@ void __stdcall glColor4usv(const GLushort *v) {
 void __stdcall glColorMask(GLboolean red, GLboolean green, GLboolean blue,
                            GLboolean alpha) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glColorMaterial(GLenum face, GLenum mode) {
@@ -338,17 +334,14 @@ void __stdcall glDeleteTextures(GLsizei n, const GLuint *textures) {
 
 void __stdcall glDepthFunc(GLenum func) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glDepthMask(GLboolean flag) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glDisable(GLenum cap) {
@@ -359,7 +352,6 @@ void __stdcall glDisable(GLenum cap) {
   case GL_ALPHA_TEST:
     break;
   default:
-//    DEBUG_BREAK;
     break;
   }
 }
@@ -376,7 +368,6 @@ void __stdcall glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 
 void __stdcall glDrawBuffer(GLenum mode) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glDrawElements(GLenum mode, GLsizei count, GLenum type,
@@ -412,14 +403,12 @@ void __stdcall glEnable(GLenum cap) {
   case GL_CULL_FACE:
     break;
   default:
-//    DEBUG_BREAK;
     break;
   }
 }
 
 void __stdcall glEnableClientState(GLenum array) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glEnd(void) {
@@ -571,7 +560,6 @@ void __stdcall glGetDoublev(GLenum pname, GLdouble *params) {
 
 GLenum __stdcall glGetError(void) {
   //
-//  DEBUG_BREAK;
   return 0;
 }
 
@@ -598,10 +586,10 @@ void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
     *params = 512;
     break;
   case GL_VIEWPORT:
-    params[0] = GLint(Context->state.viewport.x);
-    params[1] = GLint(Context->state.viewport.y);
-    params[2] = GLint(Context->state.viewport.w);
-    params[3] = GLint(Context->state.viewport.h);
+    params[0] = GLint(Context->state.viewport.x0);
+    params[1] = GLint(Context->state.viewport.y0);
+    params[2] = GLint(Context->state.viewport.dx());
+    params[3] = GLint(Context->state.viewport.dy());
     break;
   case GL_DEPTH_BITS: // UT2003 wants this
     *params = 24;
@@ -1131,12 +1119,10 @@ void __stdcall glPointSize(GLfloat size) {
 
 void __stdcall glPolygonMode(GLenum face, GLenum mode) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glPolygonOffset(GLfloat factor, GLfloat units) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glPolygonStipple(const GLubyte *mask) {
@@ -1385,8 +1371,8 @@ void __stdcall glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
   Context->state.scissor = rectf_t{
     float(x),
     float(y),
-    float(width),
-    float(height)};
+    float(x+width),
+    float(y+height)};
 }
 
 void __stdcall glSelectBuffer(GLsizei size, GLuint *buffer) {
@@ -1396,7 +1382,6 @@ void __stdcall glSelectBuffer(GLsizei size, GLuint *buffer) {
 
 void __stdcall glShadeModel(GLenum mode) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glStencilFunc(GLenum func, GLint ref, GLuint mask) {
@@ -1579,7 +1564,6 @@ void __stdcall glTexCoordPointer(GLint size, GLenum type, GLsizei stride,
 
 void __stdcall glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glTexEnvfv(GLenum target, GLenum pname, const GLfloat *params) {
@@ -1643,7 +1627,6 @@ void __stdcall glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
 void __stdcall glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameterfv(GLenum target, GLenum pname,
@@ -1654,7 +1637,6 @@ void __stdcall glTexParameterfv(GLenum target, GLenum pname,
 
 void __stdcall glTexParameteri(GLenum target, GLenum pname, GLint param) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glTexParameteriv(GLenum target, GLenum pname,
@@ -1674,7 +1656,6 @@ void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
                                GLenum format, GLenum type,
                                const GLvoid *pixels) {
   //
-//  DEBUG_BREAK;
 }
 
 void __stdcall glTranslated(GLdouble x, GLdouble y, GLdouble z) {
@@ -1805,7 +1786,7 @@ void __stdcall glVertexPointer(GLint size, GLenum type, GLsizei stride,
 
 void __stdcall glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
   Context->on_flush();
-  Context->state.viewport = rectf_t{float(x), float(y), float(w), float(h)};
+  Context->state.viewport = rectf_t{float(x), float(y), float(x+w), float(y+h)};
 }
 
 void __stdcall glPushAttrib(GLbitfield mask) {

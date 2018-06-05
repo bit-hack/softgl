@@ -31,13 +31,13 @@ struct gl_context_t {
 
   gl_context_t(HWND hwnd, HDC hdc);
 
-  buffer_manager_t buffer;
-  window_manager_t window;
-  matrix_manager_t matrix;
-  texture_manager_t texture;
-  state_manager_t state;
+  state_manager_t     state;
+  raster_module_t     raster;
+  buffer_manager_t    buffer;
+  window_manager_t    window;
+  matrix_manager_t    matrix;
+  texture_manager_t   texture;
   primative_manager_t primative;
-  raster_module_t raster;
 
   void on_flush();
   void on_resize();
