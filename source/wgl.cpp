@@ -54,6 +54,9 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
   HWND hwnd = WindowFromDC(hdc);
   // create a new context
   gl_context_t *cxt = new gl_context_t(hwnd, hdc);
+  if (!cxt->on_create()) {
+    //XXX: bad news
+  }
   log_t::printf("new context created -> %p\n", (void*)cxt);;
   // insert into the context map
   wgl.contexts.insert(cxt);
@@ -137,7 +140,7 @@ int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppf
 
 int __stdcall wglDescribePixelFormat_imp(HDC hdc, int iPixelFormat, UINT nBytes,
                                          LPPIXELFORMATDESCRIPTOR ppfd) {
-  if (iPixelFormat <= 0 || iPixelFormat > wgl.pixelFormats.size()) {
+  if (iPixelFormat <= 0 || iPixelFormat > int(wgl.pixelFormats.size())) {
     return 0;
   }
   if (ppfd) {

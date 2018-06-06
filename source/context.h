@@ -6,13 +6,13 @@
 #include "windows.h"
 
 #include "buffer.h"
+#include "config.h"
 #include "matrix.h"
+#include "primative.h"
+#include "raster.h"
 #include "state.h"
 #include "texture.h"
 #include "window.h"
-#include "primative.h"
-#include "raster.h"
-
 
 struct gl_context_t {
 
@@ -38,7 +38,9 @@ struct gl_context_t {
   matrix_manager_t    matrix;
   texture_manager_t   texture;
   primative_manager_t primative;
+  config_t            config;
 
+  bool on_create();
   void on_flush();
   void on_resize();
   void on_make_current();

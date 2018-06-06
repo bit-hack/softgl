@@ -3,28 +3,20 @@
 #include <vector>
 
 #include "GL.h"
-
 #include "math.h"
-
 
 struct vertex_t {
   float4 coord;
   float2 tex;
 };
 
-
 struct triangle_t {
   std::array<vertex_t, 3> vert;
 };
 
-
 struct primative_manager_t {
 
-  primative_manager_t()
-    : _mode(GL_TRIANGLES)
-    , _head(0)
-    , _begin_count(0)
-  {}
+  primative_manager_t() : _mode(GL_TRIANGLES), _head(0), _begin_count(0) {}
 
   void glBegin(GLenum mode);
 
@@ -32,25 +24,17 @@ struct primative_manager_t {
 
   void add_vertex(const float4 v);
 
-  void clear_triangles() {
-    _triangles.clear();
-  }
+  void clear_triangles() { _triangles.clear(); }
 
-  const std::vector<triangle_t> & triangles() const {
-    return _triangles;
-  }
+  const std::vector<triangle_t> &triangles() const { return _triangles; }
 
   void clip_triangles();
   void convert_to_dc();
 
-  void latch_uv(float2 t) {
-    _latch_uv = t;
-  }
+  void latch_uv(float2 t) { _latch_uv = t; }
 
   // int4 intead?
-  void latch_argb(float4 c) {
-    _latch_argb = c;
-  }
+  void latch_argb(float4 c) { _latch_argb = c; }
 
   void glVertexPointer(GLint size, GLenum type, GLsizei stride,
                        const GLvoid *pointer);
@@ -67,7 +51,6 @@ struct primative_manager_t {
   void glArrayElement(GLint i);
 
 protected:
-
   void _push_vertex(const vertex_t &v);
 
   void _asm_quads();

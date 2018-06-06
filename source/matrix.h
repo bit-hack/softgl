@@ -1,18 +1,16 @@
 #pragma once
-#include <cassert>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <intrin.h>
 
 #include "GL.h"
 #include "math.h"
 
-
 enum matrix_mode_t {
   GL_MATRIXMODE_MODELVIEW,
   GL_MATRIXMODE_PROJECTION,
 };
-
 
 struct matrix_t {
 

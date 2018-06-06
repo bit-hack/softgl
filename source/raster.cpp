@@ -10,14 +10,19 @@
 #include "context.h"
 
 
-bool raster_load(raster_module_t &dll) {
+bool raster_load(raster_module_t &dll, gl_context_t &cxt) {
 
   const char * dll_name[] = {
     "softgl_rast_wireframe.dll",
     "softgl_rast_reference.dll"
   };
 
-  dll.handle = LoadLibraryA(dll_name[0]);
+  std::string name;
+  if (!cxt.config.get("raster_dll", &name)) {
+    name = dll_name[0];
+  }
+
+  dll.handle = LoadLibraryA(name.c_str());
   if (!dll.handle) {
     return nullptr;
   }

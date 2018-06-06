@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdarg>
-#include <cstring>
 #include <cstdio>
-#include "windows.h"
+#include <cstring>
 
+#include "windows.h"
 
 struct log_t {
 
