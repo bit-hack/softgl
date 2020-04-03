@@ -6,7 +6,7 @@
 #include <map>
 #include <set>
 
-#include <Windows.h>
+#include "windows.h"
 
 #include "common.h"
 #include "wgl.h"
@@ -36,6 +36,9 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   if (!gl_context)
     return FALSE;
   Context->on_flush();
+  if (Context->profile) {
+    Context->profile->on_end_frame();
+  }
   GdiHook.invalidate(gl_context->window.getHwnd());
   Context->buffer.clear_colour(0x202020);
   Context->buffer.clear_depth();
@@ -56,6 +59,7 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
   gl_context_t *cxt = new gl_context_t(hwnd, hdc);
   if (!cxt->on_create()) {
     //XXX: bad news
+    return nullptr;
   }
   log_t::printf("new context created -> %p\n", (void*)cxt);;
   // insert into the context map
@@ -189,7 +193,7 @@ PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
 }
 
 HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
-  __debugbreak();
+  DEBUG_BREAK;
   return (HGLRC)gl_context;
 }
 

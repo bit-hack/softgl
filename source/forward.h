@@ -14,9 +14,9 @@ struct triangle_t;
 struct primative_manager_t;
 struct raster_t;
 struct raster_module_t;
-struct rectf_t;
 struct state_manager_t;
 struct texture_t;
+struct profile_t;
 
 enum game_id_t;
 enum matrix_mode_t;

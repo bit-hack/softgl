@@ -13,6 +13,8 @@
 #include "state.h"
 #include "texture.h"
 #include "window.h"
+#include "profile.h"
+
 
 struct gl_context_t {
 
@@ -39,6 +41,7 @@ struct gl_context_t {
   texture_manager_t   texture;
   primative_manager_t primative;
   config_t            config;
+  std::unique_ptr<profile_t> profile;
 
   bool on_create();
   void on_flush();

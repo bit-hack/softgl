@@ -146,8 +146,10 @@ bool gdi_hook_t::screenPrepare(gl_context_t &cxt) {
   HWND hwnd = cxt.window.getHwnd();
 
   // get the screen size
-  RECT rect;
-  GetClientRect(hwnd, &rect);
+  RECT rect = {0};
+  if (!GetClientRect(hwnd, &rect)) {
+    DEBUG_BREAK;
+  }
   const uint32_t w = rect.right;
   const uint32_t h = rect.bottom;
 

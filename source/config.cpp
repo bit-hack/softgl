@@ -102,9 +102,9 @@ bool config_t::get(const std::string &key, bool *out) {
   bool ret = false;
   if (itt != map_.end()) {
     const std::string &val = itt->second;
-    if (val == "True")
+    if (val == "True" || val == "true")
       *out = true, ret = true;
-    if (val == "False")
+    if (val == "False" || val == "false")
       *out = false, ret = true;
   }
   return ret;

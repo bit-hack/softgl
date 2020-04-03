@@ -2,9 +2,6 @@
 #include <cstdint>
 #include <algorithm>
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
 #include "raster.h"
 #include "math.h"
 #include "context.h"
@@ -24,7 +21,7 @@ bool raster_load(raster_module_t &dll, gl_context_t &cxt) {
 
   dll.handle = LoadLibraryA(name.c_str());
   if (!dll.handle) {
-    return nullptr;
+    return false;
   }
 
   dll.create = (rast_create_t)GetProcAddress(dll.handle, "raster_create");

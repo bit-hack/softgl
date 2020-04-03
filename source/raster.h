@@ -1,9 +1,8 @@
 #pragma once
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
+#include "windows.h"
 #include "buffer.h"
 #include "primative.h"
+#include "texture.h"
 
 struct gl_context_t;
 
@@ -22,7 +21,8 @@ struct raster_t {
   virtual void stop() = 0;
 
   // push triangles to the rasterizer
-  virtual void push_triangles(const std::vector<triangle_t> &triangles) = 0;
+  virtual void push_triangles(const std::vector<triangle_t> &triangles,
+                              const texture_t *tex) = 0;
 
   // pipeline is being flushed
   virtual void flush() = 0;

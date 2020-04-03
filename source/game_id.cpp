@@ -77,6 +77,7 @@ game_id_t getGameId()
   // query list of known hashes
   const uint64_t hash = fileHash(name.data());
   switch (hash) {
+  case 0:
   default:
     game_id = e_unknown;
   }

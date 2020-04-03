@@ -239,6 +239,14 @@ struct matrix_stack_t {
     top().multiply(m);
   }
 
+  // used by gluPerspective()
+  void glMultMatrixd(const double *v) {
+    matrix_t m;
+    for (uint32_t i = 0; i < 16; ++i)
+      m[i] = float(v[i]);
+    top().multiply(m);
+  }
+
   void glMultMatrixf(const float *v) {
     matrix_t m;
     for (uint32_t i = 0; i < 16; ++i)
@@ -347,6 +355,11 @@ struct matrix_manager_t {
                  const float f) {
     _dirty = true;
     _current->glFrustum(l, r, b, t, n, f);
+  }
+
+  void glMultMatrixd(const double *v) {
+    _dirty = true;
+    _current->glMultMatrixd(v);
   }
 
   void glMultMatrixf(const float *v) {

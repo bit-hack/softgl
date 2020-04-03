@@ -9,13 +9,9 @@ struct log_t {
 
   static FILE *_fd;
 
-  static void _open_fd() {
-    if (!_fd) {
-      _fd = fopen("softgl.log", "w");
-      AllocConsole();
-      freopen("CONOUT$", "wt", stdout);
-    }
-  }
+  static void _open_fd();
+
+  static void _reopen_stdio();
 
   static void printf(const char *fmt, ...) {
     va_list ap;

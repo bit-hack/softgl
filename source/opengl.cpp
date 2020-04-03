@@ -345,12 +345,16 @@ void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
 }
 
 void __stdcall glDisable(GLenum cap) {
+  auto &state = Context->state;
   switch (cap) {
-  case GL_CULL_FACE:
-  case GL_DEPTH_TEST:
-  case GL_BLEND:
-  case GL_ALPHA_TEST:
-    break;
+  case GL_TEXTURE_1D:   state.texture1D = false;    break;
+  case GL_TEXTURE_2D:   state.texture2D = false;    break;
+  case GL_ALPHA_TEST:   state.testAlpha = false;    break;
+  case GL_DEPTH_TEST:   state.testDepth = false;    break;
+  case GL_CULL_FACE:    state.cullFace = false;     break;
+  case GL_BLEND:        state.blendFrag = false;    break;
+  case GL_SCISSOR_TEST: state.testScissor = false;  break;
+  case GL_STENCIL_TEST: state.testStencil = false;  break;
   default:
     break;
   }
@@ -397,11 +401,16 @@ void __stdcall glEdgeFlagv(const GLboolean *flag) {
 }
 
 void __stdcall glEnable(GLenum cap) {
+  auto &state = Context->state;
   switch (cap) {
-  case GL_TEXTURE_2D:
-  case GL_ALPHA_TEST:
-  case GL_CULL_FACE:
-    break;
+  case GL_TEXTURE_1D:   state.texture1D = true;     break;
+  case GL_TEXTURE_2D:   state.texture2D = true;     break;
+  case GL_ALPHA_TEST:   state.testAlpha = true;     break;
+  case GL_DEPTH_TEST:   state.testDepth = true;     break;
+  case GL_CULL_FACE:    state.cullFace = true;      break;
+  case GL_BLEND:        state.blendFrag = true;     break;
+  case GL_SCISSOR_TEST: state.testScissor = true;   break;
+  case GL_STENCIL_TEST: state.testStencil = true;   break;
   default:
     break;
   }
@@ -493,6 +502,9 @@ void __stdcall glFinish(void) {
 }
 
 void __stdcall glFlush(void) {
+#ifndef NDEBUG
+  Sleep(5);
+#endif
   //
   Context->on_flush();
 }
@@ -828,9 +840,7 @@ GLboolean __stdcall glIsList(GLuint list) {
 }
 
 GLboolean __stdcall glIsTexture(GLuint texture) {
-  //
-  DEBUG_BREAK;
-  return GL_FALSE;
+  return Context->texture.glIsTexture(texture);
 }
 
 void __stdcall glLightModelf(GLenum pname, GLfloat param) {
@@ -984,8 +994,7 @@ void __stdcall glMatrixMode(GLenum mode) {
 }
 
 void __stdcall glMultMatrixd(const GLdouble *m) {
-  //
-  DEBUG_BREAK;
+  Context->matrix.glMultMatrixd(m);
 }
 
 void __stdcall glMultMatrixf(const GLfloat *m) {
@@ -1019,7 +1028,7 @@ void __stdcall glNormal3dv(const GLdouble *v) {
 
 void __stdcall glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz) {
   //
-  DEBUG_BREAK;
+  // DEBUG_BREAK;
 }
 
 void __stdcall glNormal3fv(const GLfloat *v) {
@@ -1094,7 +1103,8 @@ void __stdcall glPixelStoref(GLenum pname, GLfloat param) {
 
 void __stdcall glPixelStorei(GLenum pname, GLint param) {
   //
-  DEBUG_BREAK;
+  // skip for now
+//  DEBUG_BREAK;
 }
 
 void __stdcall glPixelTransferf(GLenum pname, GLfloat param) {
@@ -1659,8 +1669,7 @@ void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
 }
 
 void __stdcall glTranslated(GLdouble x, GLdouble y, GLdouble z) {
-  //
-  DEBUG_BREAK;
+  Context->matrix.glTranslatef(float(x), float(y), float(z));
 }
 
 void __stdcall glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
@@ -1714,16 +1723,18 @@ void __stdcall glVertex3dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-  Context->primative.add_vertex(float4{x, y, z, 1.f});
+  Context->primative.add_vertex(
+    float4{x, y, z, 1.f});
 }
 
 void __stdcall glVertex3fv(const GLfloat *v) {
-  Context->primative.add_vertex(float4{v[0], v[1], v[2], 1.f});
+  Context->primative.add_vertex(
+    float4{v[0], v[1], v[2], 1.f});
 }
 
 void __stdcall glVertex3i(GLint x, GLint y, GLint z) {
-  //
-  DEBUG_BREAK;
+  Context->primative.add_vertex(
+    float4{float(x), float(y), float(z), 1.f});
 }
 
 void __stdcall glVertex3iv(const GLint *v) {

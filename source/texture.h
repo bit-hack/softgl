@@ -2,6 +2,7 @@
 #include "GL.h"
 
 #include <unordered_map>
+#include <array>
 
 
 struct texture_t {
@@ -15,13 +16,19 @@ struct texture_t {
   uint32_t height;
   uint32_t *pixels;
 
+  void load(GLenum format, GLenum type, const void *src);
+  void load_rgba_8(const void *src);
+  void load_bgr_8(const void *src);
+
   void release();
 };
 
 
 struct texture_manager_t {
 
-  texture_manager_t() : _bound(0), _uuid(0) {}
+  texture_manager_t() : _uuid(0) {
+    _bound.fill(0);
+  }
 
   //
 
@@ -69,8 +76,20 @@ struct texture_manager_t {
 
   void glGenTextures(GLsizei n, GLuint *textures);
 
+  GLboolean glIsTexture(GLuint texture);
+
+  texture_t *boundTexture2d();
+
 protected:
-  uint32_t _bound; // todo: capture target too
+
+  // get or create a texture object
+  texture_t *getOrCreateTexture(uint32_t index);
+
+  // get or create a texture object
+  texture_t *getTexture(uint32_t index);
+
+  std::array<uint32_t, 4> _bound;
+
   uint32_t _uuid;
   std::unordered_map<uint32_t, struct texture_t*> _tex_map;
 };

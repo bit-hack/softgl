@@ -28,7 +28,8 @@ struct raster_wire_t : public raster_t {
 
   void stop() override {}
 
-  void push_triangles(const std::vector<triangle_t> &triangles) override {
+  void push_triangles(const std::vector<triangle_t> &triangles,
+                      const texture_t *tex) override {
 
     assert(_cxt);
 

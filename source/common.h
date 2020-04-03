@@ -17,6 +17,7 @@
 #define DEBUG_BREAK
 #endif
 
+#if 0
 struct rectf_t {
   float x0, y0, x1, y1;
 
@@ -28,5 +29,6 @@ struct rectf_t {
     return y1 - y0;
   }
 };
+#endif
 
 void save_bmp(const uint32_t *pixels, uint32_t w, uint32_t h, const char *path);

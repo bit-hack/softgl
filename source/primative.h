@@ -8,6 +8,7 @@
 struct vertex_t {
   float4 coord;
   float2 tex;
+  float4 rgba;
 };
 
 struct triangle_t {
