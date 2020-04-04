@@ -20,12 +20,16 @@ static uint32_t targetToIndex(GLenum e) {
   }
 }
 
-void fillTexture(uint32_t *pix, uint32_t w, uint32_t h) {
-  for (uint32_t y = 0; y < h; ++y) {
-    for (uint32_t x = 0; x < w; ++x) {
-      pix[x + y * w] = ((x ^ y) & 1) ? 0x101010 : 0x90b0d0;
-    }
+// required number of texels for root image and mipchain where levels is the
+// number of mip levels
+uint32_t texture_space_req(const uint32_t width, const uint32_t height, uint32_t levels) {
+  uint32_t space = 0;
+  for (uint32_t i = 0; i < levels; ++i) {
+    const uint32_t w = std::max(1u, width >> i);
+    const uint32_t h = std::max(1u, height >> i);
+    space += w * h;
   }
+  return space;
 }
 
 } // namespace
@@ -70,8 +74,8 @@ void texture_manager_t::glTexImage2D(GLenum target, GLint level,
     t->_height = height;
     t->_wshift = int32_t(log2(width));
 
-    // alloc * 2 for all of the mip levels
-    size_t mem_size = 2 * width * height * sizeof(uint32_t);
+    size_t mem_size =
+      texture_space_req(width, height, texture_t::mip_levels) * sizeof(uint32_t);
     t->_pixels[0] = (uint32_t *)_aligned_malloc(mem_size, 16);
     memset(t->_pixels[0], 0xFF, mem_size);
 
@@ -91,6 +95,11 @@ void texture_manager_t::glTexImage2D(GLenum target, GLint level,
 
   // load texture from the source
   t->load(level, format, type, pixels);
+
+  // XXX: lets fudge in some mip levels for now
+  if (level == 0) {
+    t->generateMipLevels();
+  }
 }
 
 void texture_manager_t::glCopyTexImage1D(GLenum target, GLint level,
@@ -263,7 +272,25 @@ texture_t::texture_t()
 }
 
 void texture_t::generateMipLevels() {
-  // TODO
+  for (int i = 1; i < mip_levels; ++i) {
+
+    const uint32_t *src = _pixels[i - 1];
+          uint32_t *dst = _pixels[i - 0];
+
+    // destination with and height
+    const uint32_t dw = std::max(1u, _width  >>  i   );
+    const uint32_t dh = std::max(1u, _height >>  i   );
+
+    // source width height
+    const uint32_t sw = std::max(1u, _width  >> (i-1));
+    const uint32_t sh = std::max(1u, _height >> (i-1));
+
+    for (uint32_t y = 0; y < dh; ++y) {
+      for (uint32_t x = 0; x < dw; ++x) {
+        dst[x + y * dw] = src[(x * 2) + (y * 2) * sw];
+      }
+    }
+  }
 }
 
 void texture_t::release() {
@@ -309,10 +336,19 @@ void texture_t::load_rgba_8(uint32_t level, const void *src) {
   assert(dsty && srcy);
 
   for (uint32_t y = 0; y < sheight; ++y) {
-    const uint8_t *srcx = srcy;
-    uint32_t *dstx = dsty;
+    const uint8_t  *srcx = srcy;
+          uint32_t *dstx = dsty;
     for (uint32_t x = 0; x < swidth; ++x) {
-      *dstx = packARGB(srcx[3], srcx[0], srcx[1], srcx[2]);
+      *dstx = packARGB(
+        0, 
+        (x * 255) / swidth,
+        (y * 255) / sheight,
+        0);
+      *dstx = packARGB(
+        srcx[3],
+        srcx[0],
+        srcx[1],
+        srcx[2]);
       srcx += 4;
       dstx += 1;
     }

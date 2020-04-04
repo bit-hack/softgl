@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <array>
 
+#include <intrin.h>
+
 #include "../source/context.h"
 #include "../source/math.h"
 #include "../source/raster.h"
@@ -37,6 +39,18 @@ recti_t boundTri(const frame_t &frame,
   out.x1 = std::min(out.x1, frame._width - 1);
   out.y1 = std::min(out.y1, frame._height - 1);
   return out;
+}
+
+uint32_t get_mip_level(float tri_area, float uv_area) {
+
+  const float factor = abs(uv_area * 0.99f) / abs(tri_area);
+
+  uint32_t ifactor = uint32_t(factor);
+
+  // note: / 2 because the each mip level is 4x information
+  uint32_t level = (32 - __lzcnt(ifactor));
+
+  return std::min<uint32_t>(level, texture_t::mip_levels - 1);
 }
 
 } // namespace
@@ -163,10 +177,10 @@ void drawTriUV(const frame_t &frame,
        (t2.x - t0.x) * (t1.y - t0.y));
 
   // texel space area / screen space
-  const uint32_t mip_level =
-    std::min<uint32_t>(
-      uint32_t(abs(uvarea) / abs(area)),
-      uint32_t(texture_t::mip_levels - 1));
+  // XXX: I think this needs to be non linear since this is the factor
+  //      but the levels go 1 2 4 8 16 32 etc.
+  //      log2 it here?
+  uint32_t mip_level = get_mip_level(area, uvarea);
 
   // Triangle setup
   const float sx01 = (v0.y - v1.y) * rarea;
@@ -193,12 +207,12 @@ void drawTriUV(const frame_t &frame,
   };
 
   // w interpolant
-        float iw   = c[0]      + c[1]      + c[2];
-  const float iwx  = c[3]      + c[4]      + c[5];
-  const float iwy  = c[6]      + c[7]      + c[8];
+        float iw   = c[0] + c[1] + c[2];
+  const float iwx  = c[3] + c[4] + c[5];
+  const float iwy  = c[6] + c[7] + c[8];
 
   // tex uv interpolant
-  const uint32_t wshift = tex._wshift >> mip_level;
+  const uint32_t wshift = tex._wshift - mip_level;
   const uint32_t texw   = tex._width  >> mip_level;
   const uint32_t texh   = tex._height >> mip_level;
   const uint32_t texum  = texw - 1;
@@ -213,19 +227,19 @@ void drawTriUV(const frame_t &frame,
   uint32_t *dst = frame._pixels + rect.y0 * frame._width;
      float *zbf = frame._depth  + rect.y0 * frame._width;
 
-  // Rasterize
+  // rasterize
   for (int32_t y = rect.y0; y <= rect.y1; y++) {
 
-    // Barycentric coordinates at start of row
-    float w0x = w0y;
-    float w1x = w1y;
-    float w2x = w2y;
-    float hw = iw;
+    // barycentric coordinates at start of row
+    float  w0x = w0y;
+    float  w1x = w1y;
+    float  w2x = w2y;
+    float  hw  = iw;
     float2 huv = uv;
 
     for (int32_t x = rect.x0; x <= rect.x1; x++) {
 
-      // If p is on or inside all edges, render pixel.
+      // if p is on or inside all edges, render pixel.
       if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
 
         // depth test
