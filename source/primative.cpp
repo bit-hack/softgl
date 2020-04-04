@@ -49,7 +49,7 @@ void primative_manager_t::glEnd() {
     _asm_triangle_strip();
     break;
   case GL_QUADS:            // untested
-//    _asm_quads();
+    _asm_quads();
     break;
   case GL_QUAD_STRIP:       // untested
 //    _asm_quad_strip();
@@ -67,6 +67,8 @@ void primative_manager_t::glEnd() {
     DEBUG_BREAK;
   }
   _vertex.clear();
+
+  Context->on_flush();
 }
 
 void primative_manager_t::add_vertex(const float4 v) {
@@ -81,6 +83,7 @@ void primative_manager_t::_asm_triangles() {
       _vertex[i - 0]};
     _triangles.push_back(tri);
   }
+  _vertex.clear();
 }
 
 void primative_manager_t::_asm_triangle_strip() {
@@ -92,6 +95,7 @@ void primative_manager_t::_asm_triangle_strip() {
         _vertex[i - (0 ^ b)]};
       _triangles.push_back(tri);
   }
+  _vertex.clear();
 }
 
 void primative_manager_t::_asm_triangle_fan() {
@@ -102,23 +106,25 @@ void primative_manager_t::_asm_triangle_fan() {
       _vertex[i - 0]};
     _triangles.push_back(tri);
   }
+  _vertex.clear();
 }
 
 void primative_manager_t::_asm_quads() {
-  for (size_t i = 4; i < _vertex.size(); i += 4) {
+  for (size_t i = 3; i < _vertex.size(); i += 4) {
     const triangle_t t1 = {
-      _vertex[i - 2],
+      _vertex[i - 0],
       _vertex[i - 1],
-      _vertex[i - 0]
+      _vertex[i - 2]
     };
     _triangles.push_back(t1);
     const triangle_t t2 = {
-      _vertex[i - 3],
+      _vertex[i - 0],
       _vertex[i - 2],
-      _vertex[i - 1]
+      _vertex[i - 3]
     };
     _triangles.push_back(t2);
   }
+  _vertex.clear();
 }
 
 void primative_manager_t::_asm_quad_strip() {
@@ -133,6 +139,7 @@ void primative_manager_t::_asm_polygon() {
     };
     _triangles.push_back(tri);
   }
+  _vertex.clear();
 }
 
 static bool _is_backfacing(const float4 & a, const float4 & b, const float4 & c) {
@@ -169,12 +176,16 @@ void primative_manager_t::clip_triangles() {
     //   (z0 + (z1 - z0) * t)  ==  (-w0 + (-w1 - -w0) * t)
     //   to find z == -w intersection point
     //
+    // or when our 3d coordinate is:
+    //   z / w = -1
+    //
     //   t = (z0 + w0) / ((w0 - w1) - (z1 - z0))
     //
     const float   nom = (p0.z + p0.w);
     const float denom = (p0.w - p1.w) - (p1.z - p0.z);
     const float t = nom / denom;
     if (denom == 0.f) {
+      DEBUG_BREAK;
       vert[head++] = vertex_t{v1};
       return;
     }
@@ -189,11 +200,10 @@ void primative_manager_t::clip_triangles() {
     vert[head++] = vertex_t{midPos, midTex, midCol};
   };
 
-  uint32_t cutoff = _triangles.size() - 1;
-  while (cutoff--) {
+  uint32_t cutoff = _triangles.size();
+  while (cutoff) {
 
-    auto &t = _triangles[cutoff];
-
+    auto &t = _triangles[--cutoff];
     const auto &v0 = t.vert[0];
     const auto &v1 = t.vert[1];
     const auto &v2 = t.vert[2];
@@ -251,7 +261,6 @@ void primative_manager_t::clip_triangles() {
       t = triangle_t{vert[0], vert[1], vert[2]};
     if (head >= 4)
       // append extra triangle
-      // note: I think sometimes this generates backfacing triangles
       _triangles.push_back(triangle_t{vert[0], vert[2], vert[3]});
   }
 }
@@ -294,7 +303,6 @@ void primative_manager_t::glVertexPointer(GLint size, GLenum type,
 void primative_manager_t::glColorPointer(GLint size, GLenum type,
                                          GLsizei stride,
                                          const GLvoid *pointer) {
-
   _array_color._size = size;
   _array_color._type = type;
   _array_color._stride = stride ? stride : (getGLTypeSize(type) * size);
@@ -332,9 +340,9 @@ void primative_manager_t::glArrayElement(GLint i) {
     const uint8_t *c = (const uint8_t *)_array_color._pointer;
     c += i * _array_color._stride;
     argb = {_array_color._size > 3 ? float(c[3] / 256.f) : 1.f,
-            _array_color._size > 2 ? float(c[2] / 256.f) : 1.f,
+            _array_color._size > 0 ? float(c[0] / 256.f) : 1.f,
             _array_color._size > 1 ? float(c[1] / 256.f) : 1.f,
-            _array_color._size > 0 ? float(c[0] / 256.f) : 1.f};
+            _array_color._size > 2 ? float(c[2] / 256.f) : 1.f};
   }
 
   if (!_array_vertex._pointer)

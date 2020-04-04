@@ -17,7 +17,7 @@ struct triangle_t {
 
 struct primative_manager_t {
 
-  primative_manager_t() : _mode(GL_TRIANGLES), _head(0), _begin_count(0) {}
+  primative_manager_t() : _mode(GL_TRIANGLES), _begin_count(0) {}
 
   void glBegin(GLenum mode);
 
@@ -77,7 +77,6 @@ protected:
   float2 _latch_uv;
   float4 _latch_argb;
 
-  uint32_t _head;
   std::vector<vertex_t> _vertex;
   std::vector<triangle_t> _triangles;
 };

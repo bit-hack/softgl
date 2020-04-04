@@ -26,16 +26,18 @@ bool gl_context_t::on_create() {
 }
 
 void gl_context_t::on_flush() {
-  primative.clip_triangles();
-  primative.convert_to_dc();
-  if (profile) {
-    profile->on_triangles(primative.triangles());
+  if (!primative.triangles().empty()) {
+    primative.clip_triangles();
+    primative.convert_to_dc();
+    if (profile) {
+      profile->on_triangles(primative.triangles());
+    }
+    if (raster.inst) {
+      const texture_t *tex = texture.boundTexture2d();
+      raster.inst->push_triangles(primative.triangles(), tex);
+    }
+    primative.clear_triangles();
   }
-  if (raster.inst) {
-    const texture_t *tex = texture.boundTexture2d();
-    raster.inst->push_triangles(primative.triangles(), tex);
-  }
-  primative.clear_triangles();
   raster.inst->flush();
 }
 

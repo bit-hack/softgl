@@ -33,9 +33,6 @@ void __stdcall glArrayElement(GLint i) {
 }
 
 void __stdcall glBegin(GLenum mode) {
-  assert(Context);
-  auto &cxt = *Context;
-  // save primative mode
   Context->primative.glBegin(mode);
 }
 
@@ -511,17 +508,17 @@ void __stdcall glFlush(void) {
 
 void __stdcall glFogf(GLenum pname, GLfloat param) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glFogfv(GLenum pname, const GLfloat *params) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glFogi(GLenum pname, GLint param) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glFogiv(GLenum pname, const GLint *params) {
@@ -531,7 +528,7 @@ void __stdcall glFogiv(GLenum pname, const GLint *params) {
 
 void __stdcall glFrontFace(GLenum mode) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glFrustum(GLdouble left, GLdouble right, GLdouble bottom,
@@ -752,7 +749,7 @@ void __stdcall glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
 
 void __stdcall glHint(GLenum target, GLenum mode) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glIndexMask(GLuint mask) {

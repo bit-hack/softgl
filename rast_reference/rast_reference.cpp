@@ -186,9 +186,9 @@ void drawTriUV(const frame_t &frame,
   const uint32_t tym = tex.height - 1;
   const uint32_t *texel = tex.pixels;
   const float2 tscale = {float(tex.width), float(tex.height)};
-        float2 uv  = (c[0] * t0 + c[1] * t1 + c[2] * t2);
-  const float2 uvx = (c[3] * t0 + c[4] * t1 + c[5] * t2);
-  const float2 uvy = (c[6] * t0 + c[7] * t1 + c[8] * t2);
+        float2 uv  = (c[0] * t0 + c[1] * t1 + c[2] * t2) * tscale;
+  const float2 uvx = (c[3] * t0 + c[4] * t1 + c[5] * t2) * tscale;
+  const float2 uvy = (c[6] * t0 + c[7] * t1 + c[8] * t2) * tscale;
 
   // pointer to upper left corner
   uint32_t *dst = frame._pixels + rect.y0 * frame._width;
@@ -212,10 +212,8 @@ void drawTriUV(const frame_t &frame,
         // depth test
         if (hw > zbf[x]) {
 
-          const int32_t u = int32_t(float(tex.width)  * huv.x / hw) & txm;
-          const int32_t v = int32_t(float(tex.height) * huv.y / hw) & tym;
-
-
+          const int32_t u = int32_t(huv.x / hw) & txm;
+          const int32_t v = int32_t(huv.y / hw) & tym;
 
           zbf[x] = hw;
           dst[x] = texel[u + v * tex.width];

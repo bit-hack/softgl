@@ -134,7 +134,7 @@ void texture_manager_t::glBindTexture(GLenum target, GLuint texture) {
     DEBUG_BREAK;
   }
 
-  // if this texture is being changed
+  // if the bound texture is changed
   if (_bound[targetToIndex(target)] != texture) {
     // flush the pipeline
     Context->on_flush();
@@ -155,6 +155,11 @@ GLboolean texture_manager_t::glAreTexturesResident(GLsizei n,
 }
 
 void texture_manager_t::glDeleteTextures(GLsizei n, const GLuint *textures) {
+
+  // flush the pipeline
+  // XXX: only do if it was the bound texture
+    Context->on_flush();
+
   for (GLsizei i = 0; i < n; ++i) {
     // locate texture
     auto itt = _tex_map.find(textures[i]);
@@ -239,6 +244,9 @@ void texture_t::load(GLenum format, GLenum type, const void *src) {
     case GL_BGR_EXT:
       load_bgr_8(src);
       break;
+    case GL_RGB:
+      load_rgb_8(src);
+      break;
     default:
       DEBUG_BREAK;
     }
@@ -253,9 +261,6 @@ static inline uint32_t packARGB(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 }
 
 void texture_t::load_rgba_8(const void *src) {
-
-  const int32_t xscale = width < 256 ? 256 / width  : 1;
-  const int32_t yscale = height < 256 ? 256 / height : 1;
 
   const uint8_t *srcy = (const uint8_t *)src;
   uint32_t *dsty = pixels;
@@ -274,9 +279,6 @@ void texture_t::load_rgba_8(const void *src) {
 
 void texture_t::load_bgr_8(const void *src) {
 
-  const int32_t xscale = (width  < 256) ? (256 / width ) : 1;
-  const int32_t yscale = (height < 256) ? (256 / height) : 1;
-
   const uint8_t  *srcy = (const uint8_t *)src;
         uint32_t *dsty = pixels;
 
@@ -293,6 +295,22 @@ void texture_t::load_bgr_8(const void *src) {
       dstx += 1;
     }
 
+    srcy += width * 3;
+    dsty += width;
+  }
+}
+
+void texture_t::load_rgb_8(const void *src) {
+  const uint8_t  *srcy = (const uint8_t *)src;
+        uint32_t *dsty = pixels;
+  for (uint32_t y = 0; y < height; ++y) {
+    const uint8_t *srcx = srcy;
+    uint32_t *dstx = dsty;
+    for (uint32_t x = 0; x < width; ++x) {
+      *dstx = packARGB(0, srcx[0], srcx[1], srcx[2]);
+      srcx += 3;
+      dstx += 1;
+    }
     srcy += width * 3;
     dsty += width;
   }

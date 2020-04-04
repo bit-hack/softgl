@@ -19,6 +19,7 @@ struct texture_t {
   void load(GLenum format, GLenum type, const void *src);
   void load_rgba_8(const void *src);
   void load_bgr_8(const void *src);
+  void load_rgb_8(const void *src);
 
   void release();
 };
