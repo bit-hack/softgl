@@ -287,7 +287,19 @@ void texture_t::generateMipLevels() {
 
     for (uint32_t y = 0; y < dh; ++y) {
       for (uint32_t x = 0; x < dw; ++x) {
-        dst[x + y * dw] = src[(x * 2) + (y * 2) * sw];
+
+        const uint32_t ox = sw > 1 ? 1 : 0;
+        const uint32_t oy = sh > 1 ? 1 : 0;
+
+        const uint32_t s00 = src[(x * 2 +  0) + (y * 2 +  0) * sw];
+        const uint32_t s10 = src[(x * 2 + ox) + (y * 2 +  0) * sw];
+        const uint32_t s01 = src[(x * 2 +  0) + (y * 2 + oy) * sw];
+        const uint32_t s11 = src[(x * 2 + ox) + (y * 2 + oy) * sw];
+        dst[x + y * dw] =
+          ((s00 >> 2) & 0x3f3f3f3f) +
+          ((s10 >> 2) & 0x3f3f3f3f) +
+          ((s01 >> 2) & 0x3f3f3f3f) +
+          ((s11 >> 2) & 0x3f3f3f3f);
       }
     }
   }

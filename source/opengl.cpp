@@ -160,7 +160,7 @@ void __stdcall glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
 
 void __stdcall glColor3ubv(const GLubyte *v) {
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK;
 }
 
 void __stdcall glColor3ui(GLuint red, GLuint green, GLuint blue) {
