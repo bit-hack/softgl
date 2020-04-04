@@ -143,28 +143,44 @@ void drawTriUV(const frame_t &frame,
   // Compute triangle bounding box
   const recti_t rect = boundTri(frame, v0, v1, v2);
 
-  // the signed triangle area
+  // the signed triangle area (screen space)
   const float area =
-      1.f / ((v1.x - v0.x) * (v2.y - v0.y) -
-             (v2.x - v0.x) * (v1.y - v0.y));
+      ((v1.x - v0.x) * (v2.y - v0.y) -
+       (v2.x - v0.x) * (v1.y - v0.y));
+  const float rarea = 1.f / area;
+  if (area == 0.f) {
+    return;
+  }
   if (area <= 0.f) {
     // if its backfacing then discard it?
 //    return;
   }
 
+  // the signed area of the UVs (texel space)
+  const float uvarea =
+      (tex._width * tex._height) *
+      ((t1.x - t0.x) * (t2.y - t0.y) -
+       (t2.x - t0.x) * (t1.y - t0.y));
+
+  // texel space area / screen space
+  const uint32_t mip_level =
+    std::min<uint32_t>(
+      uint32_t(abs(uvarea) / abs(area)),
+      uint32_t(texture_t::mip_levels - 1));
+
   // Triangle setup
-  const float sx01 = (v0.y - v1.y) * area;
-  const float sy01 = (v1.x - v0.x) * area;
-  const float sx12 = (v1.y - v2.y) * area;
-  const float sy12 = (v2.x - v1.x) * area;
-  const float sx20 = (v2.y - v0.y) * area;
-  const float sy20 = (v0.x - v2.x) * area;
+  const float sx01 = (v0.y - v1.y) * rarea;
+  const float sy01 = (v1.x - v0.x) * rarea;
+  const float sx12 = (v1.y - v2.y) * rarea;
+  const float sy12 = (v2.x - v1.x) * rarea;
+  const float sx20 = (v2.y - v0.y) * rarea;
+  const float sy20 = (v0.x - v2.x) * rarea;
 
   // Barycentric coordinates at minX/minY corner
   const float2 p{float(rect.x0), float(rect.y0)};
-  float w0y = edgeEval(v1, v2, p) * area;
-  float w1y = edgeEval(v2, v0, p) * area;
-  float w2y = edgeEval(v0, v1, p) * area;
+  float w0y = edgeEval(v1, v2, p) * rarea;
+  float w1y = edgeEval(v2, v0, p) * rarea;
+  float w2y = edgeEval(v0, v1, p) * rarea;
 
   // interpolation coefficients
   const float iw0 = 1.f / v0.w;
@@ -182,10 +198,13 @@ void drawTriUV(const frame_t &frame,
   const float iwy  = c[6]      + c[7]      + c[8];
 
   // tex uv interpolant
-  const uint32_t txm = tex.width  - 1;
-  const uint32_t tym = tex.height - 1;
-  const uint32_t *texel = tex.pixels;
-  const float2 tscale = {float(tex.width), float(tex.height)};
+  const uint32_t wshift = tex._wshift >> mip_level;
+  const uint32_t texw   = tex._width  >> mip_level;
+  const uint32_t texh   = tex._height >> mip_level;
+  const uint32_t texum  = texw - 1;
+  const uint32_t texvm  = texh - 1;
+  const uint32_t *texel = tex._pixels[mip_level];
+  const float2 tscale = {float(texw), float(texh)};
         float2 uv  = (c[0] * t0 + c[1] * t1 + c[2] * t2) * tscale;
   const float2 uvx = (c[3] * t0 + c[4] * t1 + c[5] * t2) * tscale;
   const float2 uvy = (c[6] * t0 + c[7] * t1 + c[8] * t2) * tscale;
@@ -212,11 +231,11 @@ void drawTriUV(const frame_t &frame,
         // depth test
         if (hw > zbf[x]) {
 
-          const int32_t u = int32_t(huv.x / hw) & txm;
-          const int32_t v = int32_t(huv.y / hw) & tym;
+          const int32_t u = int32_t(huv.x / hw) & texum;
+          const int32_t v = int32_t(huv.y / hw) & texvm;
 
           zbf[x] = hw;
-          dst[x] = texel[u + v * tex.width];
+          dst[x] = texel[u + (v << wshift)];
         }
       }
 

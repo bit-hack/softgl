@@ -67,8 +67,6 @@ void primative_manager_t::glEnd() {
     DEBUG_BREAK;
   }
   _vertex.clear();
-
-  Context->on_flush();
 }
 
 void primative_manager_t::add_vertex(const float4 v) {

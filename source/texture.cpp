@@ -8,9 +8,8 @@
 
 namespace {
 
-bool isPowerOfTwo(uint32_t x)
-{
-    return (x & (x - 1)) == 0;
+bool isPowerOfTwo(uint32_t x) {
+  return (x & (x - 1)) == 0;
 }
 
 static uint32_t targetToIndex(GLenum e) {
@@ -34,8 +33,8 @@ void fillTexture(uint32_t *pix, uint32_t w, uint32_t h) {
 void texture_manager_t::glTexImage1D(GLenum target, GLint level,
                                      GLint internalformat, GLsizei width,
                                      GLint border, GLenum format, GLenum type,
-const GLvoid *pixels) {
-DEBUG_BREAK;
+                                     const GLvoid *pixels) {
+  DEBUG_BREAK;
 }
 
 void texture_manager_t::glTexImage2D(GLenum target, GLint level,
@@ -43,26 +42,55 @@ void texture_manager_t::glTexImage2D(GLenum target, GLint level,
                                      GLsizei height, GLint border,
                                      GLenum format, GLenum type,
                                      const GLvoid *pixels) {
-  if (level != 0) {
-    return;
-  }
 
   if (!isPowerOfTwo(width) || !isPowerOfTwo(height)) {
     DEBUG_BREAK;
   }
+  if (std::max(width, height) >= texture_t::max_size) {
+    DEBUG_BREAK;
+  }
+  if (level >= texture_t::mip_levels) {
+    DEBUG_BREAK;
+  }
 
   texture_t *t = boundTexture2d();
-  if (t) {
-    assert(t);
-    t->release();
-    t->pixels =
-      (uint32_t *)_aligned_malloc(width * height * sizeof(uint32_t), 16);
-    assert(t->pixels);
-    t->width = width;
-    t->height = height;
-    // load texture from the source
-    t->load(format, type, pixels);
+  if (!t) {
+    return;
   }
+
+  // if this is the root level then allocate the image
+  if (level == 0) {
+
+    if (t->_pixels[0]) {
+      t->release();
+      t->_pixels.fill(nullptr);
+    }
+
+    t->_width  = width;
+    t->_height = height;
+    t->_wshift = int32_t(log2(width));
+
+    // alloc * 2 for all of the mip levels
+    size_t mem_size = 2 * width * height * sizeof(uint32_t);
+    t->_pixels[0] = (uint32_t *)_aligned_malloc(mem_size, 16);
+    memset(t->_pixels[0], 0xFF, mem_size);
+
+    // alloc all of the other mip levels
+    for (int i = 0; i < texture_t::mip_levels - 1; ++i) {
+      uint32_t advance = std::max<uint32_t>(1u, (width >> i) * (height >> i));
+      t->_pixels[i + 1] = t->_pixels[i] + advance;
+    }
+  }
+  else {
+    // check our mip level is a submultiple
+    if (width  != std::max(1u, t->_width  >> level) ||
+        height != std::max(1u, t->_height >> level)) {
+      DEBUG_BREAK;
+    }
+  }
+
+  // load texture from the source
+  t->load(level, format, type, pixels);
 }
 
 void texture_manager_t::glCopyTexImage1D(GLenum target, GLint level,
@@ -191,7 +219,6 @@ texture_t *texture_manager_t::getOrCreateTexture(uint32_t x) {
   }
   // create new texture
   auto tex = std::make_unique<texture_t>();
-  memset(tex.get(), 0, sizeof(texture_t));
   // insert into the tex map
   texture_t *t = tex.release();
   _tex_map[x] = t;
@@ -227,26 +254,38 @@ texture_t *texture_manager_t::boundTexture2d() {
   return nullptr;
 }
 
-void texture_t::release() {
-  if (pixels) {
-    _aligned_free(pixels);
-    pixels = nullptr;
-  }
+texture_t::texture_t()
+  : _format(e_argb)
+  , _width(0)
+  , _height(0)
+{
+  _pixels.fill(nullptr);
 }
 
-void texture_t::load(GLenum format, GLenum type, const void *src) {
+void texture_t::generateMipLevels() {
+  // TODO
+}
+
+void texture_t::release() {
+  if (_pixels[0]) {
+    _aligned_free(_pixels[0]);
+  }
+  _width = 0;
+  _height = 0;
+  _pixels.fill(nullptr);
+}
+
+void texture_t::load(uint32_t level, GLenum format, GLenum type, const void *src) {
+
+  assert(level < mip_levels);
+  assert(_pixels[level]);
+
   switch (type) {
   case GL_UNSIGNED_BYTE:
     switch (format) {
-    case GL_RGBA:
-      load_rgba_8(src);
-      break;
-    case GL_BGR_EXT:
-      load_bgr_8(src);
-      break;
-    case GL_RGB:
-      load_rgb_8(src);
-      break;
+    case GL_RGBA:      load_rgba_8(level, src); break;
+    case GL_BGR_EXT:   load_bgr_8 (level, src); break;
+    case GL_RGB:       load_rgb_8 (level, src); break;
     default:
       DEBUG_BREAK;
     }
@@ -260,58 +299,68 @@ static inline uint32_t packARGB(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
   return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
-void texture_t::load_rgba_8(const void *src) {
+void texture_t::load_rgba_8(uint32_t level, const void *src) {
 
-  const uint8_t *srcy = (const uint8_t *)src;
-  uint32_t *dsty = pixels;
-  for (uint32_t y = 0; y < height; ++y) {
+  const uint32_t swidth  = std::max(1u, _width  >> level);
+  const uint32_t sheight = std::max(1u, _height >> level);
+
+  const uint8_t  *srcy = (const uint8_t *)src;
+        uint32_t *dsty = _pixels[level];
+  assert(dsty && srcy);
+
+  for (uint32_t y = 0; y < sheight; ++y) {
     const uint8_t *srcx = srcy;
     uint32_t *dstx = dsty;
-    for (uint32_t x = 0; x < width; ++x) {
+    for (uint32_t x = 0; x < swidth; ++x) {
       *dstx = packARGB(srcx[3], srcx[0], srcx[1], srcx[2]);
       srcx += 4;
       dstx += 1;
     }
-    srcy += width * 4;
-    dsty += width;
+    srcy += swidth * 4;
+    dsty += swidth;
   }
 }
 
-void texture_t::load_bgr_8(const void *src) {
+void texture_t::load_bgr_8(uint32_t level, const void *src) {
+
+  const uint32_t swidth  = std::max(1u, _width  >> level);
+  const uint32_t sheight = std::max(1u, _height >> level);
 
   const uint8_t  *srcy = (const uint8_t *)src;
-        uint32_t *dsty = pixels;
+        uint32_t *dsty = _pixels[level];
+  assert(dsty && srcy);
 
-  for (uint32_t y = 0; y < height; ++y) {
-
+  for (uint32_t y = 0; y < sheight; ++y) {
     const uint8_t *srcx = srcy;
     uint32_t *dstx = dsty;
-
-    for (uint32_t x = 0; x < width; ++x) {
-
+    for (uint32_t x = 0; x < swidth; ++x) {
       *dstx = packARGB(0, srcx[2], srcx[1], srcx[0]);
-
       srcx += 3;
       dstx += 1;
     }
-
-    srcy += width * 3;
-    dsty += width;
+    srcy += swidth * 3;
+    dsty += swidth;
   }
 }
 
-void texture_t::load_rgb_8(const void *src) {
+void texture_t::load_rgb_8(uint32_t level, const void *src) {
+
+  const uint32_t swidth  = std::max(1u, _width  >> level);
+  const uint32_t sheight = std::max(1u, _height >> level);
+
   const uint8_t  *srcy = (const uint8_t *)src;
-        uint32_t *dsty = pixels;
-  for (uint32_t y = 0; y < height; ++y) {
+        uint32_t *dsty = _pixels[level];
+  assert(dsty && srcy);
+
+  for (uint32_t y = 0; y < sheight; ++y) {
     const uint8_t *srcx = srcy;
     uint32_t *dstx = dsty;
-    for (uint32_t x = 0; x < width; ++x) {
+    for (uint32_t x = 0; x < swidth; ++x) {
       *dstx = packARGB(0, srcx[0], srcx[1], srcx[2]);
       srcx += 3;
       dstx += 1;
     }
-    srcy += width * 3;
-    dsty += width;
+    srcy += swidth * 3;
+    dsty += swidth;
   }
 }

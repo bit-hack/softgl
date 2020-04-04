@@ -7,19 +7,32 @@
 
 struct texture_t {
 
+  enum {
+    max_size = 1024,
+    mip_levels = 10  // log2(max_size)
+  };
+
   enum format_t {
     e_argb
   };
 
-  format_t format;
-  uint32_t width;
-  uint32_t height;
-  uint32_t *pixels;
+  texture_t();
 
-  void load(GLenum format, GLenum type, const void *src);
-  void load_rgba_8(const void *src);
-  void load_bgr_8(const void *src);
-  void load_rgb_8(const void *src);
+  format_t _format;
+
+
+  uint32_t _width;
+  uint32_t _wshift;  // log2(_width)
+
+  uint32_t _height;
+  std::array<uint32_t *, mip_levels> _pixels;
+
+  void load(uint32_t level, GLenum format, GLenum type, const void *src);
+  void load_rgba_8(uint32_t level, const void *src);
+  void load_bgr_8(uint32_t level, const void *src);
+  void load_rgb_8(uint32_t level, const void *src);
+
+  void generateMipLevels();
 
   void release();
 };
