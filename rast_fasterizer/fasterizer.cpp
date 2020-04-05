@@ -221,7 +221,8 @@ struct rast_reference_t : public raster_t {
   void stop() override {}
 
   void push_triangles(const std::vector<triangle_t> &triangles,
-                      const texture_t *tex) override {
+                      const texture_t *tex,
+                      const state_manager_t &state) override {
 
     frame_t frame;
     frame._pixels = _cxt->buffer.pixels();

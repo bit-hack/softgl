@@ -19,6 +19,16 @@ struct frame_t {
   int32_t _height;
 };
 
+// ~log3.75
+static const std::array<uint8_t, 128> mip_log_table = {
+    0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+};
+
 constexpr float edgeEval(const float4 &a, const float4 &b, const float2 &c) {
   return ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
 }
@@ -42,15 +52,16 @@ recti_t boundTri(const frame_t &frame,
 }
 
 uint32_t get_mip_level(float tri_area, float uv_area) {
-
   const float factor = abs(uv_area * 0.99f) / abs(tri_area);
-
   uint32_t ifactor = uint32_t(factor);
-
+#if 1
+  return mip_log_table[
+    std::min(ifactor, mip_log_table.size() - 1)];
+#else
   // note: / 2 because the each mip level is 4x information
   uint32_t level = (32 - __lzcnt(ifactor));
-
   return std::min<uint32_t>(level, texture_t::mip_levels - 1);
+#endif
 }
 
 } // namespace
@@ -177,9 +188,6 @@ void drawTriUV(const frame_t &frame,
        (t2.x - t0.x) * (t1.y - t0.y));
 
   // texel space area / screen space
-  // XXX: I think this needs to be non linear since this is the factor
-  //      but the levels go 1 2 4 8 16 32 etc.
-  //      log2 it here?
   uint32_t mip_level = get_mip_level(area, uvarea);
 
   // Triangle setup
@@ -413,7 +421,8 @@ struct rast_reference_t : public raster_t {
   }
 
   void push_triangles(const std::vector<triangle_t> &triangles,
-                      const texture_t *tex) override {
+                      const texture_t *tex,
+                      const state_manager_t &state) override {
 
     if (!_cxt || !_frame._pixels) {
       return;
@@ -423,6 +432,12 @@ struct rast_reference_t : public raster_t {
       if (t.vert[0].coord.w == 0.f) {
         // signals fully clipped so discard
         continue;
+      }
+
+      if (state.blendFrag) {
+        if (state.blendFuncDst != GL_ZERO && state.blendFuncSrc != GL_ONE) {
+          return;
+        }
       }
 
       if (tex) {

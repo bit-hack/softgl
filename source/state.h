@@ -19,6 +19,10 @@ struct state_manager_t {
   GLfloat clearDepth;
   rectf_t scissor;
 
+  GLenum blendFuncSrc;
+  GLenum blendFuncDst;
+  GLenum depthFunc;
+
   bool testAlpha;   // GL_ALPHA_TEST
   bool testDepth;   // GL_DEPTH_TEST
   bool cullFace;    // GL_CULL_FACE

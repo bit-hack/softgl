@@ -25,19 +25,28 @@ void __stdcall glAlphaFunc(GLenum func, GLclampf ref) {
 
 GLboolean __stdcall glAreTexturesResident(GLsizei n, const GLuint *textures,
                                           GLboolean *residences) {
-  return Context->texture.glAreTexturesResident(n, textures, residences);
+  if (gl_context_t *cxt = Context) {
+    return cxt->texture.glAreTexturesResident(n, textures, residences);
+  }
+  return GL_FALSE;
 }
 
 void __stdcall glArrayElement(GLint i) {
-  Context->primative.glArrayElement(i);
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glArrayElement(i);
+  }
 }
 
 void __stdcall glBegin(GLenum mode) {
-  Context->primative.glBegin(mode);
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glBegin(mode);
+  }
 }
 
 void __stdcall glBindTexture(GLenum target, GLuint texture) {
-  Context->texture.glBindTexture(target, texture);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glBindTexture(target, texture);
+  }
 }
 
 void __stdcall glBitmap(GLsizei width, GLsizei height, GLfloat xorig,
@@ -48,8 +57,10 @@ void __stdcall glBitmap(GLsizei width, GLsizei height, GLfloat xorig,
 }
 
 void __stdcall glBlendFunc(GLenum sfactor, GLenum dfactor) {
-  //
-//  DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    cxt->state.blendFuncSrc = sfactor;
+    cxt->state.blendFuncDst = dfactor;
+  }
 }
 
 void __stdcall glCallList(GLuint list) {
@@ -63,11 +74,13 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 }
 
 void __stdcall glClear(GLbitfield mask) {
-  if (mask & GL_COLOR_BUFFER_BIT) {
-    Context->buffer.clear_colour(0x202020);
-  }
-  if (mask & GL_DEPTH_BUFFER_BIT) {
-    Context->buffer.clear_depth();
+  if (gl_context_t *cxt = Context) {
+    if (mask & GL_COLOR_BUFFER_BIT) {
+      cxt->buffer.clear_colour(0x202020);
+    }
+    if (mask & GL_DEPTH_BUFFER_BIT) {
+      cxt->buffer.clear_depth();
+    }
   }
 }
 
@@ -87,7 +100,9 @@ void __stdcall glClearColor(GLclampf r, GLclampf g, GLclampf b, GLclampf a) {
 }
 
 void __stdcall glClearDepth(GLclampd depth) {
-  Context->state.clearDepth = GLfloat(depth);
+  if (gl_context_t *cxt = Context) {
+    cxt->state.clearDepth = GLfloat(depth);
+  }
 }
 
 void __stdcall glClearIndex(GLfloat c) {
@@ -126,11 +141,15 @@ void __stdcall glColor3dv(const GLdouble *v) {
 }
 
 void __stdcall glColor3f(GLfloat red, GLfloat green, GLfloat blue) {
-  Context->primative.latch_argb(float4{0.f, red, green, blue});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.latch_argb(float4{0.f, red, green, blue});
+  }
 }
 
 void __stdcall glColor3fv(const GLfloat *v) {
-  Context->primative.latch_argb(float4{0.f, v[0], v[1], v[2]});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.latch_argb(float4{0.f, v[0], v[1], v[2]});
+  }
 }
 
 void __stdcall glColor3i(GLint red, GLint green, GLint blue) {
@@ -159,8 +178,15 @@ void __stdcall glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
 }
 
 void __stdcall glColor3ubv(const GLubyte *v) {
-  //
-//  DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.latch_argb(
+      float4{
+        0.f,
+        float(v[0]) / 256.f,
+        float(v[1]) / 256.f,
+        float(v[2]) / 256.f}
+    );
+  }
 }
 
 void __stdcall glColor3ui(GLuint red, GLuint green, GLuint blue) {
@@ -206,11 +232,15 @@ void __stdcall glColor4dv(const GLdouble *v) {
 
 void __stdcall glColor4f(GLfloat red, GLfloat green, GLfloat blue,
                          GLfloat alpha) {
-  Context->primative.latch_argb(float4{alpha, red, green, blue});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.latch_argb(float4{alpha, red, green, blue});
+  }
 }
 
 void __stdcall glColor4fv(const GLfloat *v) {
-  Context->primative.latch_argb(float4{v[3], v[0], v[1], v[2]});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.latch_argb(float4{v[3], v[0], v[1], v[2]});
+  }
 }
 
 void __stdcall glColor4i(GLint red, GLint green, GLint blue, GLint alpha) {
@@ -276,7 +306,9 @@ void __stdcall glColorMaterial(GLenum face, GLenum mode) {
 
 void __stdcall glColorPointer(GLint size, GLenum type, GLsizei stride,
                               const GLvoid *pointer) {
-  Context->primative.glColorPointer(size, type, stride, pointer);
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glColorPointer(size, type, stride, pointer);
+  }
 }
 
 void __stdcall glCopyPixels(GLint x, GLint y, GLsizei width, GLsizei height,
@@ -288,31 +320,41 @@ void __stdcall glCopyPixels(GLint x, GLint y, GLsizei width, GLsizei height,
 void __stdcall glCopyTexImage1D(GLenum target, GLint level,
                                 GLenum internalFormat, GLint x, GLint y,
                                 GLsizei width, GLint border) {
-  Context->texture.glCopyTexImage1D(target, level, internalFormat, x, y, width,
-                                    border);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glCopyTexImage1D(target, level, internalFormat, x, y, width,
+                                      border);
+  }
 }
 
 void __stdcall glCopyTexImage2D(GLenum target, GLint level,
                                 GLenum internalFormat, GLint x, GLint y,
                                 GLsizei width, GLsizei height, GLint border) {
-  Context->texture.glCopyTexImage2D(target, level, internalFormat, x, y, width,
-                                    height, border);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glCopyTexImage2D(target, level, internalFormat, x, y, width,
+                                  height, border);
+  }
 }
 
 void __stdcall glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                                    GLint x, GLint y, GLsizei width) {
-  Context->texture.glCopyTexSubImage1D(target, level, xoffset, x, y, width);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glCopyTexSubImage1D(target, level, xoffset, x, y, width);
+  }
 }
 
 void __stdcall glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset,
                                    GLint yoffset, GLint x, GLint y,
                                    GLsizei width, GLsizei height) {
-  Context->texture.glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y,
-                                       width, height);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y,
+                                     width, height);
+  }
 }
 
 void __stdcall glCullFace(GLenum mode) {
-  getContext()->state.cullMode = mode;
+  if (gl_context_t *cxt = Context) {
+    cxt->state.cullMode = mode;
+  }
 }
 
 void __stdcall glDebugEntry(void) {
@@ -326,11 +368,15 @@ void __stdcall glDeleteLists(GLuint list, GLsizei range) {
 }
 
 void __stdcall glDeleteTextures(GLsizei n, const GLuint *textures) {
-  Context->texture.glDeleteTextures(n, textures);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glDeleteTextures(n, textures);
+  }
 }
 
 void __stdcall glDepthFunc(GLenum func) {
-  //
+  if (gl_context_t *cxt = Context) {
+    cxt->state.depthFunc = func;
+  }
 }
 
 void __stdcall glDepthMask(GLboolean flag) {
@@ -342,18 +388,20 @@ void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
 }
 
 void __stdcall glDisable(GLenum cap) {
-  auto &state = Context->state;
-  switch (cap) {
-  case GL_TEXTURE_1D:   state.texture1D = false;    break;
-  case GL_TEXTURE_2D:   state.texture2D = false;    break;
-  case GL_ALPHA_TEST:   state.testAlpha = false;    break;
-  case GL_DEPTH_TEST:   state.testDepth = false;    break;
-  case GL_CULL_FACE:    state.cullFace = false;     break;
-  case GL_BLEND:        state.blendFrag = false;    break;
-  case GL_SCISSOR_TEST: state.testScissor = false;  break;
-  case GL_STENCIL_TEST: state.testStencil = false;  break;
-  default:
-    break;
+  if (gl_context_t *cxt = Context) {
+    auto &state = cxt->state;
+    switch (cap) {
+    case GL_TEXTURE_1D:   state.texture1D = false;    break;
+    case GL_TEXTURE_2D:   state.texture2D = false;    break;
+    case GL_ALPHA_TEST:   state.testAlpha = false;    break;
+    case GL_DEPTH_TEST:   state.testDepth = false;    break;
+    case GL_CULL_FACE:    state.cullFace = false;     break;
+    case GL_BLEND:        state.blendFrag = false;    break;
+    case GL_SCISSOR_TEST: state.testScissor = false;  break;
+    case GL_STENCIL_TEST: state.testStencil = false;  break;
+    default:
+      break;
+    }
   }
 }
 
@@ -373,7 +421,9 @@ void __stdcall glDrawBuffer(GLenum mode) {
 
 void __stdcall glDrawElements(GLenum mode, GLsizei count, GLenum type,
                               const GLvoid *indices) {
-  Context->primative.glDrawElements(mode, count, type, indices);
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glDrawElements(mode, count, type, indices);
+  }
 }
 
 void __stdcall glDrawPixels(GLsizei width, GLsizei height, GLenum format,
@@ -398,18 +448,20 @@ void __stdcall glEdgeFlagv(const GLboolean *flag) {
 }
 
 void __stdcall glEnable(GLenum cap) {
-  auto &state = Context->state;
-  switch (cap) {
-  case GL_TEXTURE_1D:   state.texture1D = true;     break;
-  case GL_TEXTURE_2D:   state.texture2D = true;     break;
-  case GL_ALPHA_TEST:   state.testAlpha = true;     break;
-  case GL_DEPTH_TEST:   state.testDepth = true;     break;
-  case GL_CULL_FACE:    state.cullFace = true;      break;
-  case GL_BLEND:        state.blendFrag = true;     break;
-  case GL_SCISSOR_TEST: state.testScissor = true;   break;
-  case GL_STENCIL_TEST: state.testStencil = true;   break;
-  default:
-    break;
+  if (gl_context_t *cxt = Context) {
+    auto &state = cxt->state;
+    switch (cap) {
+    case GL_TEXTURE_1D:   state.texture1D = true;     break;
+    case GL_TEXTURE_2D:   state.texture2D = true;     break;
+    case GL_ALPHA_TEST:   state.testAlpha = true;     break;
+    case GL_DEPTH_TEST:   state.testDepth = true;     break;
+    case GL_CULL_FACE:    state.cullFace = true;      break;
+    case GL_BLEND:        state.blendFrag = true;     break;
+    case GL_SCISSOR_TEST: state.testScissor = true;   break;
+    case GL_STENCIL_TEST: state.testStencil = true;   break;
+    default:
+      break;
+    }
   }
 }
 
@@ -419,7 +471,9 @@ void __stdcall glEnableClientState(GLenum array) {
 
 void __stdcall glEnd(void) {
   //
-  Context->primative.glEnd();
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glEnd();
+  }
 }
 
 void __stdcall glEndList(void) {
@@ -495,7 +549,9 @@ void __stdcall glFeedbackBuffer(GLsizei size, GLenum type, GLfloat *buffer) {
 
 void __stdcall glFinish(void) {
   //
-  Context->on_flush();
+  if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
+  }
 }
 
 void __stdcall glFlush(void) {
@@ -503,7 +559,9 @@ void __stdcall glFlush(void) {
   Sleep(5);
 #endif
   //
-  Context->on_flush();
+  if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
+  }
 }
 
 void __stdcall glFogf(GLenum pname, GLfloat param) {
@@ -533,13 +591,15 @@ void __stdcall glFrontFace(GLenum mode) {
 
 void __stdcall glFrustum(GLdouble left, GLdouble right, GLdouble bottom,
                          GLdouble top, GLdouble zNear, GLdouble zFar) {
-  Context->matrix.glFrustum(
-    float(left),
-    float(right),
-    float(bottom),
-    float(top),
-    float(zNear),
-    float(zFar));
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glFrustum(
+      float(left),
+      float(right),
+      float(bottom),
+      float(top),
+      float(zNear),
+      float(zFar));
+  }
 }
 
 GLuint __stdcall glGenLists(GLsizei range) {
@@ -549,7 +609,9 @@ GLuint __stdcall glGenLists(GLsizei range) {
 }
 
 void __stdcall glGenTextures(GLsizei n, GLuint *textures) {
-  Context->texture.glGenTextures(n, textures);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glGenTextures(n, textures);
+  }
 }
 
 void __stdcall glGetBooleanv(GLenum pname, GLboolean *params) {
@@ -573,47 +635,53 @@ GLenum __stdcall glGetError(void) {
 }
 
 void __stdcall glGetFloatv(GLenum pname, GLfloat *params) {
-  switch (pname) {
-  case GL_MODELVIEW_MATRIX: {
-    const matrix_t &m = Context->matrix.modelview();
-    memcpy(params, m.e.data(), sizeof(GLfloat) * 16);
-    break;
-  }
-  case GL_PROJECTION_MATRIX: {
-    const matrix_t &m = Context->matrix.projection();
-    memcpy(params, m.e.data(), sizeof(GLfloat) * 16);
-    break;
-  }
-  default:
-    DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    switch (pname) {
+    case GL_MODELVIEW_MATRIX:
+    {
+      const matrix_t &m = cxt->matrix.modelview();
+      memcpy(params, m.e.data(), sizeof(GLfloat) * 16);
+      break;
+    }
+    case GL_PROJECTION_MATRIX:
+    {
+      const matrix_t &m = cxt->matrix.projection();
+      memcpy(params, m.e.data(), sizeof(GLfloat) * 16);
+      break;
+    }
+    default:
+      DEBUG_BREAK;
+    }
   }
 }
 
 void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
-  switch (pname) {
-  case GL_MAX_TEXTURE_SIZE:
-    *params = 512;
-    break;
-  case GL_VIEWPORT:
-    params[0] = GLint(Context->state.viewport.x0);
-    params[1] = GLint(Context->state.viewport.y0);
-    params[2] = GLint(Context->state.viewport.dx());
-    params[3] = GLint(Context->state.viewport.dy());
-    break;
-  case GL_DEPTH_BITS: // UT2003 wants this
-    *params = 24;
-    break;
-  case GL_STENCIL_BITS: // UT2003 wants this
-    *params = 8;
-    break;
-  case GL_RED_BITS:
-  case GL_GREEN_BITS:
-  case GL_BLUE_BITS:
-  case GL_ALPHA_BITS:
-    *params = 8;
-    break;
-  default:
-    DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    switch (pname) {
+    case GL_MAX_TEXTURE_SIZE:
+      *params = 512;
+      break;
+    case GL_VIEWPORT:
+      params[0] = GLint(cxt->state.viewport.x0);
+      params[1] = GLint(cxt->state.viewport.y0);
+      params[2] = GLint(cxt->state.viewport.dx());
+      params[3] = GLint(cxt->state.viewport.dy());
+      break;
+    case GL_DEPTH_BITS: // UT2003 wants this
+      *params = 24;
+      break;
+    case GL_STENCIL_BITS: // UT2003 wants this
+      *params = 8;
+      break;
+    case GL_RED_BITS:
+    case GL_GREEN_BITS:
+    case GL_BLUE_BITS:
+    case GL_ALPHA_BITS:
+      *params = 8;
+      break;
+    default:
+      DEBUG_BREAK;
+    }
   }
 }
 
@@ -837,7 +905,10 @@ GLboolean __stdcall glIsList(GLuint list) {
 }
 
 GLboolean __stdcall glIsTexture(GLuint texture) {
-  return Context->texture.glIsTexture(texture);
+  if (gl_context_t *cxt = Context) {
+    return cxt->texture.glIsTexture(texture);
+  }
+  return GL_FALSE;
 }
 
 void __stdcall glLightModelf(GLenum pname, GLfloat param) {
@@ -896,7 +967,9 @@ void __stdcall glListBase(GLuint base) {
 }
 
 void __stdcall glLoadIdentity(void) {
-  Context->matrix.glLoadIdentity();
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glLoadIdentity();
+  }
 }
 
 void __stdcall glLoadMatrixd(const GLdouble *m) {
@@ -905,7 +978,9 @@ void __stdcall glLoadMatrixd(const GLdouble *m) {
 }
 
 void __stdcall glLoadMatrixf(const GLfloat *m) {
-  Context->matrix.glLoadMatrixf(m);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glLoadMatrixf(m);
+  }
 }
 
 void __stdcall glLoadName(GLuint name) {
@@ -987,15 +1062,21 @@ void __stdcall glMaterialiv(GLenum face, GLenum pname, const GLint *params) {
 }
 
 void __stdcall glMatrixMode(GLenum mode) {
-  Context->matrix.glMatrixMode(mode);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glMatrixMode(mode);
+  }
 }
 
 void __stdcall glMultMatrixd(const GLdouble *m) {
-  Context->matrix.glMultMatrixd(m);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glMultMatrixd(m);
+  }
 }
 
 void __stdcall glMultMatrixf(const GLfloat *m) {
-  Context->matrix.glMultMatrixf(m);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glMultMatrixf(m);
+  }
 }
 
 void __stdcall glNewList(GLuint list, GLenum mode) {
@@ -1061,13 +1142,15 @@ void __stdcall glNormalPointer(GLenum type, GLsizei stride,
 
 void __stdcall glOrtho(GLdouble left, GLdouble right, GLdouble bottom,
                        GLdouble top, GLdouble zNear, GLdouble zFar) {
-  Context->matrix.glOrtho(
-    float(left),
-    float(right),
-    float(bottom),
-    float(top),
-    float(zNear),
-    float(zFar));
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glOrtho(
+      float(left),
+      float(right),
+      float(bottom),
+      float(top),
+      float(zNear),
+      float(zFar));
+  }
 }
 
 void __stdcall glPassThrough(GLfloat token) {
@@ -1148,7 +1231,9 @@ void __stdcall glPopClient(void) {
 }
 
 void __stdcall glPopMatrix(void) {
-  Context->matrix.glPopMatrix();
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glPopMatrix();
+  }
 }
 
 void __stdcall glPopName(void) {
@@ -1173,7 +1258,9 @@ void __stdcall glPushClient(GLbitfield mask) {
 }
 
 void __stdcall glPushMatrix(void) {
-  Context->matrix.glPushMatrix();
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glPushMatrix();
+  }
 }
 
 void __stdcall glPushName(GLuint name) {
@@ -1359,27 +1446,37 @@ GLint __stdcall glRenderMode(GLenum mode) {
 }
 
 void __stdcall glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdouble z) {
-  Context->matrix.glRotatef(float(angle), float(x), float(y), float(z));
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glRotatef(float(angle), float(x), float(y), float(z));
+  }
 }
 
 void __stdcall glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
-  Context->matrix.glRotatef(angle, x, y, z);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glRotatef(angle, x, y, z);
+  }
 }
 
 void __stdcall glScaled(GLdouble x, GLdouble y, GLdouble z) {
-  Context->matrix.glScalef(float(x), float(y), float(z));
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glScalef(float(x), float(y), float(z));
+  }
 }
 
 void __stdcall glScalef(GLfloat x, GLfloat y, GLfloat z) {
-  Context->matrix.glScalef(x, y, z);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glScalef(x, y, z);
+  }
 }
 
 void __stdcall glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
-  Context->state.scissor = rectf_t{
-    float(x),
-    float(y),
-    float(x+width),
-    float(y+height)};
+  if (gl_context_t *cxt = Context) {
+    cxt->state.scissor = rectf_t{
+      float(x),
+      float(y),
+      float(x + width),
+      float(y + height)};
+  }
 }
 
 void __stdcall glSelectBuffer(GLsizei size, GLuint *buffer) {
@@ -1461,7 +1558,9 @@ void __stdcall glTexCoord2f(GLfloat s, GLfloat t) {
 }
 
 void __stdcall glTexCoord2fv(const GLfloat *v) {
-  Context->primative.latch_uv(float2{v[0], v[1]});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.latch_uv(float2{v[0], v[1]});
+  }
 }
 
 void __stdcall glTexCoord2i(GLint s, GLint t) {
@@ -1566,7 +1665,9 @@ void __stdcall glTexCoord4sv(const GLshort *v) {
 
 void __stdcall glTexCoordPointer(GLint size, GLenum type, GLsizei stride,
                                  const GLvoid *pointer) {
-  Context->primative.glTexCoordPointer(size, type, stride, pointer);
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glTexCoordPointer(size, type, stride, pointer);
+  }
 }
 
 void __stdcall glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
@@ -1628,8 +1729,10 @@ void __stdcall glTexImage1D(GLenum target, GLint level, GLint internalformat,
 void __stdcall glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                             GLsizei width, GLsizei height, GLint border,
                             GLenum format, GLenum type, const GLvoid *pixels) {
-  Context->texture.glTexImage2D(target, level, internalFormat, width,
-                                height, border, format, type, pixels);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glTexImage2D(target, level, internalFormat, width,
+                              height, border, format, type, pixels);
+  }
 }
 
 void __stdcall glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
@@ -1655,7 +1758,9 @@ void __stdcall glTexParameteriv(GLenum target, GLenum pname,
 void __stdcall glTexSubImage1D(GLenum target, GLint level, GLint xoffset,
                                GLsizei width, GLenum format, GLenum type,
                                const GLvoid *pixels) {
-  Context->texture.glTexSubImage1D(target, level, xoffset, width, format, type, pixels);
+  if (gl_context_t *cxt = Context) {
+    cxt->texture.glTexSubImage1D(target, level, xoffset, width, format, type, pixels);
+  }
 }
 
 void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
@@ -1666,11 +1771,15 @@ void __stdcall glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
 }
 
 void __stdcall glTranslated(GLdouble x, GLdouble y, GLdouble z) {
-  Context->matrix.glTranslatef(float(x), float(y), float(z));
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glTranslatef(float(x), float(y), float(z));
+  }
 }
 
 void __stdcall glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
-  Context->matrix.glTranslatef(x, y, z);
+  if (gl_context_t *cxt = Context) {
+    cxt->matrix.glTranslatef(x, y, z);
+  }
 }
 
 void __stdcall glVertex2d(GLdouble x, GLdouble y) {
@@ -1682,11 +1791,15 @@ void __stdcall glVertex2dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex2f(GLfloat x, GLfloat y) {
-  Context->primative.add_vertex(float4{x, y, 0, 1.f});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(float4{x, y, 0, 1.f});
+  }
 }
 
 void __stdcall glVertex2fv(const GLfloat *v) {
-  Context->primative.add_vertex(float4{v[0], v[1], 0, 1.f});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(float4{v[0], v[1], 0, 1.f});
+  }
 }
 
 void __stdcall glVertex2i(GLint x, GLint y) {
@@ -1720,18 +1833,24 @@ void __stdcall glVertex3dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-  Context->primative.add_vertex(
-    float4{x, y, z, 1.f});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(
+      float4{x, y, z, 1.f});
+  }
 }
 
 void __stdcall glVertex3fv(const GLfloat *v) {
-  Context->primative.add_vertex(
-    float4{v[0], v[1], v[2], 1.f});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(
+      float4{v[0], v[1], v[2], 1.f});
+  }
 }
 
 void __stdcall glVertex3i(GLint x, GLint y, GLint z) {
-  Context->primative.add_vertex(
-    float4{float(x), float(y), float(z), 1.f});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(
+      float4{float(x), float(y), float(z), 1.f});
+  }
 }
 
 void __stdcall glVertex3iv(const GLint *v) {
@@ -1760,11 +1879,15 @@ void __stdcall glVertex4dv(const GLdouble *v) {
 }
 
 void __stdcall glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
-  Context->primative.add_vertex(float4{x, y, z, w});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(float4{x, y, z, w});
+  }
 }
 
 void __stdcall glVertex4fv(const GLfloat *v) {
-  Context->primative.add_vertex(float4{v[0], v[1], v[2], v[3]});
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.add_vertex(float4{v[0], v[1], v[2], v[3]});
+  }
 }
 
 void __stdcall glVertex4i(GLint x, GLint y, GLint z, GLint w) {
@@ -1789,12 +1912,16 @@ void __stdcall glVertex4sv(const GLshort *v) {
 
 void __stdcall glVertexPointer(GLint size, GLenum type, GLsizei stride,
                                const GLvoid *pointer) {
-  Context->primative.glVertexPointer(size, type, stride, pointer);
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glVertexPointer(size, type, stride, pointer);
+  }
 }
 
 void __stdcall glViewport(GLint x, GLint y, GLsizei w, GLsizei h) {
-  Context->on_flush();
-  Context->state.viewport = rectf_t{float(x), float(y), float(x+w), float(y+h)};
+  if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
+    cxt->state.viewport = rectf_t{float(x), float(y), float(x + w), float(y + h)};
+  }
 }
 
 void __stdcall glPushAttrib(GLbitfield mask) {

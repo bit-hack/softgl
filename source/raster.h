@@ -3,6 +3,7 @@
 #include "buffer.h"
 #include "primative.h"
 #include "texture.h"
+#include "state.h"
 
 struct gl_context_t;
 
@@ -22,7 +23,8 @@ struct raster_t {
 
   // push triangles to the rasterizer
   virtual void push_triangles(const std::vector<triangle_t> &triangles,
-                              const texture_t *tex) = 0;
+                              const texture_t *tex,
+                              const state_manager_t &state) = 0;
 
   // pipeline is being flushed
   virtual void flush() = 0;

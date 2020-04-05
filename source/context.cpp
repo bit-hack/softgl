@@ -34,7 +34,7 @@ void gl_context_t::on_flush() {
     }
     if (raster.inst) {
       const texture_t *tex = texture.boundTexture2d();
-      raster.inst->push_triangles(primative.triangles(), tex);
+      raster.inst->push_triangles(primative.triangles(), tex, state);
     }
     primative.clear_triangles();
   }
