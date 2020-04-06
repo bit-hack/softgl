@@ -39,6 +39,9 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   if (Context->profile) {
     Context->profile->on_end_frame();
   }
+  if (Context->raster.inst) {
+    Context->raster.inst->present();
+  }
   GdiHook.invalidate(gl_context->window.getHwnd());
   Context->buffer.clear_colour(0x202020);
   Context->buffer.clear_depth();
@@ -78,6 +81,7 @@ BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
     // this is the current context
     gl_context = nullptr;
   }
+  cxt->on_destroy();
   // unhook this window
   GdiHook.unhook(*cxt);
   // erase the context

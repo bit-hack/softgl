@@ -21,8 +21,13 @@ bool gl_context_t::on_create() {
     // cant load a rasterizer
     return false;
   }
-  raster.inst->start(*this);
-  return true;
+  return raster.inst->start(*this);
+}
+
+void gl_context_t::on_destroy() {
+  if (raster.inst) {
+    raster.inst->stop();
+  }
 }
 
 void gl_context_t::on_flush() {

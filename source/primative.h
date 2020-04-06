@@ -5,14 +5,16 @@
 #include "GL.h"
 #include "math.h"
 
+#pragma pack( push, 1 )
 struct vertex_t {
   float4 coord;
-  float2 tex;
   float4 rgba;
+  float2 tex;
 };
 
+#pragma pack( push, 1 )
 struct triangle_t {
-  std::array<vertex_t, 3> vert;
+  vertex_t vert[3];
 };
 
 struct primative_manager_t {

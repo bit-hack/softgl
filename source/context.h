@@ -44,6 +44,7 @@ struct gl_context_t {
   std::unique_ptr<profile_t> profile;
 
   bool on_create();
+  void on_destroy();
   void on_flush();
   void on_resize();
   void on_make_current();

@@ -6,6 +6,7 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 add_subdirectory(rast_fasterizer)
 add_subdirectory(rast_wireframe)
 add_subdirectory(rast_reference)
+add_subdirectory(rast_opencl)
 
 file(GLOB C_FILES source/*.cpp)
 file(GLOB H_FILES source/*.h)

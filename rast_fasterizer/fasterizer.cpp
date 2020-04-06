@@ -216,7 +216,10 @@ struct rast_reference_t : public raster_t {
 
   void framebuffer_aquire() override {}
 
-  void start(gl_context_t &cxt) override { _cxt = &cxt; }
+  bool start(gl_context_t &cxt) override {
+    _cxt = &cxt;
+    return true;
+  }
 
   void stop() override {}
 

@@ -9,6 +9,18 @@ struct gl_context_t;
 
 struct raster_t {
 
+  // register a texture
+  virtual void texture_add(const texture_t *tex) {}
+
+  // unregister a texture
+  virtual void texture_release(const texture_t *tex) {}
+
+  // a texture has been updated
+  virtual void texture_update(const texture_t *tex) {}
+
+  // bind a texture to this pipeline
+  virtual void texture_bind(const texture_t *tex) {}
+
   // stop any use of old framebuffer
   virtual void framebuffer_release() = 0;
 
@@ -16,7 +28,7 @@ struct raster_t {
   virtual void framebuffer_aquire() = 0;
 
   // spin up the rasterizer
-  virtual void start(gl_context_t &cxt) = 0;
+  virtual bool start(gl_context_t &cxt) = 0;
 
   // kill the rasterizer
   virtual void stop() = 0;

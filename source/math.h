@@ -6,6 +6,7 @@ const float pi1 = 3.14159265359f;
 const float pi2 = 3.14159265359f * 2.f;
 }
 
+#pragma pack( push, 1 )
 template <typename type_t>
 struct vec4_t {
 

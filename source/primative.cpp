@@ -70,7 +70,7 @@ void primative_manager_t::glEnd() {
 }
 
 void primative_manager_t::add_vertex(const float4 v) {
-  _push_vertex(vertex_t{v, _latch_uv, _latch_argb});
+  _push_vertex(vertex_t{v, _latch_argb, _latch_uv});
 }
 
 void primative_manager_t::_asm_triangles() {
@@ -195,7 +195,7 @@ void primative_manager_t::clip_triangles() {
     const float4 midPos = float4::lerp(p0, p1, t);
     const float2 midTex = float2::lerp(t0, t1, t);
     const float4 midCol = float4::lerp(r0, r1, t);
-    vert[head++] = vertex_t{midPos, midTex, midCol};
+    vert[head++] = vertex_t{midPos, midCol, midTex};
   };
 
   uint32_t cutoff = _triangles.size();
@@ -362,7 +362,7 @@ void primative_manager_t::glArrayElement(GLint i) {
   };
 
   // push vertex
-  _push_vertex(vertex_t{v, uv, argb});
+  _push_vertex(vertex_t{v, argb, uv});
 }
 
 void primative_manager_t::glDrawElements(GLenum mode, GLsizei count,
