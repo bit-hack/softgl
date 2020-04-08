@@ -426,6 +426,15 @@ void __stdcall glDrawElements(GLenum mode, GLsizei count, GLenum type,
   }
 }
 
+void __stdcall glDrawRangeElements(GLenum mode,
+                                   GLuint start,
+                                   GLuint end,
+                                   GLsizei count,
+                                   GLenum type,
+                                   const void * indices) {
+  DEBUG_BREAK;
+}
+
 void __stdcall glDrawPixels(GLsizei width, GLsizei height, GLenum format,
                             GLenum type, const GLvoid *pixels) {
   //
@@ -656,6 +665,9 @@ void __stdcall glGetFloatv(GLenum pname, GLfloat *params) {
 }
 
 void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
+
+  #define GL_MAX_TEXTURE_UNITS 0x84E2
+
   if (gl_context_t *cxt = Context) {
     switch (pname) {
     case GL_MAX_TEXTURE_SIZE:
@@ -678,6 +690,9 @@ void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
     case GL_BLUE_BITS:
     case GL_ALPHA_BITS:
       *params = 8;
+      break;
+    case GL_MAX_TEXTURE_UNITS: // UT2003 wants this
+      *params = 1;
       break;
     default:
       DEBUG_BREAK;

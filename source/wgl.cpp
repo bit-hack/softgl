@@ -193,6 +193,9 @@ HDC __stdcall wglGetCurrentDC_imp(VOID) {
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
   PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
+  if (!proc) {
+    log_t::printf("%s(\"%s\")\n", __FUNCTION__, (void*)(a));
+  }
   return proc;
 }
 

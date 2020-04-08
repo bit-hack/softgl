@@ -70,6 +70,7 @@ EXPORTS
     glDrawArrays
     glDrawBuffer
     glDrawElements
+    glDrawRangeElements
     glDrawPixels
     glEdgeFlag
     glEdgeFlagPointer

@@ -31,17 +31,6 @@ struct __attribute__ ((packed)) triangle_t {
   struct vertex_t vert[3];
 };
 
-static float edge_eval(const float4 a, const float4 b, const float2 c) {
-  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-}
-
-static float triangle_area(const float4 v0, const float4 v1, const float4 v2) {
-  const float area =
-      1.f / ((v1.x - v0.x) * (v2.y - v0.y) -
-             (v2.x - v0.x) * (v1.y - v0.y));
-  return area;
-}
-
 kernel void raster(__global const struct triangle_t *tri,
                    const uint num_tri,
                    __global uint *fb_color,

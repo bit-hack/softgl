@@ -370,7 +370,7 @@ void drawTriUV2(const frame_t &frame,
     // barycentric coordinates at start of row
     float  w0x = w0y;
     float  w1x = w1y;
-    float  w2x = w2y;
+//    float  w2x = w2y;
     float  hw  = iw;
     float2 huv = uv;
 
@@ -391,6 +391,8 @@ void drawTriUV2(const frame_t &frame,
       // render the interpolated span
       int32_t nx = x + stride;
       for (; x < nx && x <= rect.x1; ++x) {
+
+        const float w2x = 1.f - (w0x + w1x);
 
         // if p is on or inside all edges, render pixel.
         if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
@@ -413,7 +415,7 @@ void drawTriUV2(const frame_t &frame,
         // step in the x axis
         w0x += sx12;  // edge interpolant
         w1x += sx20;  // edge interpolant
-        w2x += sx01;  // edge interpolant
+//        w2x += sx01;  // edge interpolant
         hw  += iwx;   // 1/w
       }
 
@@ -424,7 +426,7 @@ void drawTriUV2(const frame_t &frame,
     // step in the y axis
     w0y += sy12;
     w1y += sy20;
-    w2y += sy01;
+//    w2y += sy01;
     iw  += iwy;
     uv  += uvy;
 
@@ -587,6 +589,7 @@ struct rast_reference_t : public raster_t {
         continue;
       }
 
+#if 0
       if (state.blendFrag) {
 #if 1
         if (state.blendFuncDst != GL_ZERO && state.blendFuncSrc != GL_ONE) {
@@ -598,6 +601,7 @@ struct rast_reference_t : public raster_t {
         }
 #endif
       }
+#endif
 
       if (tex) {
         drawTriUV2(_frame, *tex, t);
