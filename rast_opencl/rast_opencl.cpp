@@ -31,6 +31,40 @@ struct __attribute__ ((packed)) triangle_t {
   struct vertex_t vert[3];
 };
 
+float triangle_area(const float2 v0,
+                    const float2 v1,
+                    const float2 v2) {
+
+  // area is found using part of the vector product
+
+  // x = a2 * b3 - a3 * b2
+  // y = a1 * b3 - a3 * b1
+  // z = a1 * b2 - a2 * b1
+
+  // where a = v0 -> v1
+  // where b = v0 -> v2
+
+  // we only care about the z componant which contains the area of the
+  // parallelogram formed. i'm unsure why we dont need to multiply by
+  // 0.5f however when returning the result.
+
+  return (v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y);
+}
+
+// evaluate the gradient field given the following:
+//  normal:   the normal for that edge
+//  poe:      a point on the edge
+//  point:    the location where to sample it
+float evaluate(const float2 normal,
+               const float2 poe,
+               const float2 point) {
+  return dot(normal, point) - dot(normal, poe);
+}
+
+float2 cross2d(const float2 a) {
+  return (float2)(-a.y, a.x );
+}
+
 kernel void raster(__global const struct triangle_t *tri,
                    const uint num_tri,
                    __global uint *fb_color,
@@ -38,10 +72,10 @@ kernel void raster(__global const struct triangle_t *tri,
                    uint fb_pitch) {
 
   // chunk bounding rect
-  float chunk_min_x = get_group_id(0) * CHUNK_SIZE;
-  float chunk_min_y = get_group_id(1) * CHUNK_SIZE;
-  float chunk_max_x =     chunk_min_x + CHUNK_SIZE;
-  float chunk_max_y =     chunk_min_y + CHUNK_SIZE;
+  const float chunk_min_x = get_group_id(0) * CHUNK_SIZE;
+  const float chunk_min_y = get_group_id(1) * CHUNK_SIZE;
+  const float chunk_max_x =     chunk_min_x + CHUNK_SIZE;
+  const float chunk_max_y =     chunk_min_y + CHUNK_SIZE;
 
   // offset the framebuffer
   const uint fb_offs = get_group_id(0) * CHUNK_SIZE +
@@ -49,39 +83,64 @@ kernel void raster(__global const struct triangle_t *tri,
   fb_color += fb_offs;
   fb_depth += fb_offs;
 
+  // chunk staring coordinate
+  const float2 start = (float2)(chunk_min_x, chunk_min_y);
+
+  // for each triangle
   for (uint t=0; t < num_tri; ++t) {
 
     // get the vertices
-    const float4 v0 = tri[t].vert[0].coord;
-    const float4 v1 = tri[t].vert[2].coord;
-    const float4 v2 = tri[t].vert[1].coord;
+    const float2 v0 = tri[t].vert[0].coord.xy;
+    const float2 v1 = tri[t].vert[2].coord.xy;
+    const float2 v2 = tri[t].vert[1].coord.xy;
 
-    if (v0.w == 0.f || v1.w == 0.f || v2.w == 0.f) {
-      continue;
-    }
+    // find the area of the triangle
+    const float area = triangle_area(v0, v1, v2);
 
-    if (v0.x >= chunk_min_x && v0.x < chunk_max_x) {
-      if (v0.y >= chunk_min_y && v0.y < chunk_max_y) {
-        int x = v0.x - chunk_min_x;
-        int y = v0.y - chunk_min_y;
-        fb_color[ x + y * fb_pitch ] = 0xffffff;
+    // find edge vectors
+    const float2 d12 = v2 - v1;
+    const float2 d20 = v0 - v2;
+
+    // cross product gives us normals from the edges
+    // which we 'normalize' to the area of the triangle
+    const float2 n0 = cross2d(d12) / area;
+    const float2 n1 = cross2d(d20) / area;
+
+    // edge functions are
+    //  s0 = dot(n0, point) - d0
+    //  s1 = dot(n1, point) - d1
+    //  s2 = dot(n2, point) - d2
+
+    // evaluate the starting position for each interpolant
+    float s0 = evaluate(n0, v1, start);
+    float s1 = evaluate(n1, v2, start);
+
+    for (int y = 0; y < CHUNK_SIZE; y += 1) {
+
+      float s0_ = s0;
+      float s1_ = s1;
+
+      for (int x = 0; x < CHUNK_SIZE; x += 1) {
+
+        // s2_ can be derived from s0_ and s1_ since we know the
+        // sum of them all should add up to 1.0f (the full area)
+        const float s2_ = 1.f - (s0_ + s1_);
+
+        if (s0_ > 0 && s1_ > 0 && s2_ > 0) {
+          const uchar r = (uchar)(s0_ * 256);
+          const uchar g = (uchar)(s1_ * 256);
+          const uchar b = (uchar)(s2_ * 256);
+          const uint rgb = (r << 16) | (g << 8) | b;
+
+          fb_color[ x + y * fb_pitch ] = rgb;
+        }
+
+        s0_ += n0.x;
+        s1_ += n1.x;
       }
-    }
 
-    if (v1.x >= chunk_min_x && v1.x < chunk_max_x) {
-      if (v1.y >= chunk_min_y && v1.y < chunk_max_y) {
-        int x = v1.x - chunk_min_x;
-        int y = v1.y - chunk_min_y;
-        fb_color[ x + y * fb_pitch ] = 0xffffff;
-      }
-    }
-
-    if (v2.x >= chunk_min_x && v2.x < chunk_max_x) {
-      if (v2.y >= chunk_min_y && v2.y < chunk_max_y) {
-        int x = v2.x - chunk_min_x;
-        int y = v2.y - chunk_min_y;
-        fb_color[ x + y * fb_pitch ] = 0xffffff;
-      }
+      s0 += n0.y;
+      s1 += n1.y;
     }
 
   }
