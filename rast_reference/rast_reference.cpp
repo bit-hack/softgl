@@ -370,7 +370,6 @@ void drawTriUV2(const frame_t &frame,
     // barycentric coordinates at start of row
     float  w0x = w0y;
     float  w1x = w1y;
-//    float  w2x = w2y;
     float  hw  = iw;
     float2 huv = uv;
 
@@ -415,7 +414,6 @@ void drawTriUV2(const frame_t &frame,
         // step in the x axis
         w0x += sx12;  // edge interpolant
         w1x += sx20;  // edge interpolant
-//        w2x += sx01;  // edge interpolant
         hw  += iwx;   // 1/w
       }
 
@@ -426,7 +424,6 @@ void drawTriUV2(const frame_t &frame,
     // step in the y axis
     w0y += sy12;
     w1y += sy20;
-//    w2y += sy01;
     iw  += iwy;
     uv  += uvy;
 
@@ -553,6 +550,31 @@ struct rast_reference_t : public raster_t {
   rast_reference_t() {
     _cxt = nullptr;
     _frame._pixels = nullptr;
+  }
+
+  void framebuffer_clear(
+    bool color,
+    bool depth,
+    bool stencil,
+    uint32_t clear_color,
+    float clear_depth,
+    uint32_t clear_stencil) override {
+
+    const int32_t area = _frame._width * _frame._height;
+    if (color) {
+      const uint32_t *end = _frame._pixels + area;
+      uint32_t *ptr = _frame._pixels;
+      for (; ptr != end; ++ptr) {
+        *ptr = clear_color;
+      }
+    }
+    if (depth) {
+      const float *end = _frame._depth + area;
+      float *ptr = _frame._depth;
+      for (; ptr != end; ++ptr) {
+        *ptr = 0.f;
+      }
+    }
   }
 
   void framebuffer_release() override {

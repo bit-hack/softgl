@@ -27,6 +27,15 @@ struct raster_t {
   // attach new framebuffer
   virtual void framebuffer_aquire() = 0;
 
+  // clear the framebuffer
+  virtual void framebuffer_clear(
+    bool color,
+    bool depth,
+    bool stencil,
+    uint32_t clear_color,
+    float clear_depth,
+    uint32_t clear_stencil) {};
+
   // spin up the rasterizer
   virtual bool start(gl_context_t &cxt) = 0;
 

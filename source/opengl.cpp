@@ -75,11 +75,14 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 
 void __stdcall glClear(GLbitfield mask) {
   if (gl_context_t *cxt = Context) {
-    if (mask & GL_COLOR_BUFFER_BIT) {
-      cxt->buffer.clear_colour(0x202020);
-    }
-    if (mask & GL_DEPTH_BUFFER_BIT) {
-      cxt->buffer.clear_depth();
+
+    const bool color   = (0 != (mask & GL_COLOR_BUFFER_BIT));
+    const bool depth   = (0 != (mask & GL_DEPTH_BUFFER_BIT));
+    const bool stencil = (0 != (mask & GL_STENCIL_BUFFER_BIT));
+
+    if (cxt->raster.inst) {
+      cxt->raster.inst->framebuffer_clear(
+        color, depth, stencil, 0x202020, 1000.f, 0);
     }
   }
 }

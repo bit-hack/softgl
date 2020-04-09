@@ -422,7 +422,7 @@ struct vec2_t {
   }
 
   static vec2_t cross(const vec2_t &v) {
-    return vec2_t { v.y, -v.x };
+    return vec2_t { -v.y, v.x };
   }
 
   static vec2_t lerp(const vec2_t &a, const vec2_t &b, float t) {
