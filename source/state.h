@@ -12,6 +12,8 @@ struct state_manager_t {
     clearColor = 0x101010;
 
     array_vertex = true;
+    cullMode = GL_BACK;
+    cullFace = true;
   }
 
   GLenum beginMode;

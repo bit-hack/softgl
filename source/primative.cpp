@@ -198,6 +198,8 @@ void primative_manager_t::clip_triangles() {
     vert[head++] = vertex_t{midPos, midCol, midTex};
   };
 
+  auto &state = _cxt.state;
+
   uint32_t cutoff = _triangles.size();
   while (cutoff) {
 
@@ -205,13 +207,21 @@ void primative_manager_t::clip_triangles() {
     const auto &v0 = t.vert[0];
     const auto &v1 = t.vert[1];
     const auto &v2 = t.vert[2];
-#if 0
-    if (_is_backfacing(v0.coord, v1.coord, v2.coord)) {
-      // discard backfacing triangle
-      memset(&t, 0, sizeof(t));
-      continue;
+
+    // backface culling
+    if (state.cullFace) {
+      const bool backface = _is_backfacing(v0.coord, v1.coord, v2.coord);
+      bool discard = false;
+      discard |= (state.cullMode == GL_FRONT) && !backface;
+      discard |= (state.cullMode == GL_BACK) && backface;
+      discard |= (state.cullMode == GL_FRONT_AND_BACK);
+
+      if (discard) {
+        // discard backfacing triangle
+        memset(&t, 0, sizeof(t));
+        continue;
+      }
     }
-#endif
 
     // bit positive when behind near plane
     const int32_t c0 = (v0.coord.z <= -v0.coord.w) << 0;  // 1

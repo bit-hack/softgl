@@ -605,10 +605,6 @@ void drawTriUV2(const frame_t &frame,
   if (area == 0.f) {
     return;
   }
-  if (area <= 0.f) {
-    // if its backfacing then discard it?
-//    return;
-  }
 
   // the signed area of the UVs (texel space)
   const float uvarea =

@@ -229,12 +229,12 @@ int __stdcall wglDescribePixelFormat_imp(HDC hdc,
 }
 
 HDC __stdcall wglGetCurrentDC_imp(VOID) {
-  log_t::printf("%s()\n");
+  log_t::printf("%s()\n", __func__);
   return gl_context ? gl_context->window.getHdc() : nullptr;
 }
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
-  log_t::printf("%s(%s)\n", (char*)a);
+  log_t::printf("%s(%s)\n", __func__, (char*)a);
   PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
   if (!proc) {
     log_t::printf("  not found!");
@@ -243,7 +243,7 @@ PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
 }
 
 HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
-  log_t::printf("%s()\n");
+  log_t::printf("%s()\n", __func__);
   DEBUG_BREAK;
   return (HGLRC)gl_context;
 }
@@ -322,6 +322,6 @@ DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b) {
 }
 
 const char * __stdcall wglGetExtensionsStringARB_imp(HDC hdc) {
-  log_t::printf("%s(%p)\n", hdc);
+  log_t::printf("%s(%p)\n", __func__, hdc);
   return "";
 }

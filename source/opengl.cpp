@@ -554,16 +554,16 @@ void __stdcall glEnable(GLenum cap) {
   if (gl_context_t *cxt = Context) {
     auto &state = cxt->state;
     switch (cap) {
-    case GL_TEXTURE_1D:   state.texture1D = true;     break;
-    case GL_TEXTURE_2D:   state.texture2D = true;     break;
-    case GL_ALPHA_TEST:   state.testAlpha = true;     break;
-    case GL_DEPTH_TEST:   state.testDepth = true;     break;
-    case GL_CULL_FACE:    state.cullFace = true;      break;
-    case GL_BLEND:        state.blendFrag = true;     break;
-    case GL_SCISSOR_TEST: state.testScissor = true;   break;
-    case GL_STENCIL_TEST: state.testStencil = true;   break;
-    case GL_COLOR_ARRAY:  state.array_color = true;   break;
-    case GL_VERTEX_ARRAY: state.array_vertex = true;  break;
+    case GL_TEXTURE_1D:   state.texture1D              = true; break;
+    case GL_TEXTURE_2D:   state.texture2D              = true; break;
+    case GL_ALPHA_TEST:   state.testAlpha              = true; break;
+    case GL_DEPTH_TEST:   state.testDepth              = true; break;
+    case GL_CULL_FACE:    state.cullFace               = true; break;
+    case GL_BLEND:        state.blendFrag              = true; break;
+    case GL_SCISSOR_TEST: state.testScissor            = true; break;
+    case GL_STENCIL_TEST: state.testStencil            = true; break;
+    case GL_COLOR_ARRAY:  state.array_color            = true; break;
+    case GL_VERTEX_ARRAY: state.array_vertex           = true; break;
     case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = true; break;
     default:
       break;
@@ -714,8 +714,13 @@ void __stdcall glFogiv(GLenum pname, const GLint *params) {
 
 void __stdcall glFrontFace(GLenum mode) {
   TRACE();
-  //
-//  DEBUG_BREAK;
+  switch (mode) {
+  case GL_CW:
+    // as we expect
+    break;
+  case GL_CCW:
+    DEBUG_BREAK;
+  }
 }
 
 void __stdcall glFrustum(GLdouble left, GLdouble right, GLdouble bottom,
