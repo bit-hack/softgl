@@ -12,6 +12,28 @@
 
 namespace {
 
+struct triangle_setup_t {
+
+  enum {
+    slot_w0,  // triangle weight 0
+    slot_w1,  // triangle weight 1
+    slot_iw,  // inverse w
+    slot_r,   // r / w
+    slot_g,   // g / w
+    slot_b,   // b / w
+    slot_u,   // u / w
+    slot_v,   // v / w
+    _slot_count_
+  };
+
+  std::array<float, _slot_count_> v;
+  std::array<float, _slot_count_> vx;
+  std::array<float, _slot_count_> vy;
+
+  recti_t bound;
+  uint32_t mip_level;
+};
+
 struct frame_t {
   uint32_t *_pixels;
   float *_depth;
@@ -23,10 +45,10 @@ constexpr float edgeEval(const float4 &a, const float4 &b, const float2 &c) {
   return ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
 }
 
-recti_t boundTri(const frame_t &frame,
-                 const float4 &v0,
-                 const float4 &v1,
-                 const float4 &v2) {
+recti_t triangle_bound(const frame_t &frame,
+                       const float4 &v0,
+                       const float4 &v1,
+                       const float4 &v2) {
   recti_t out;
   // Compute triangle bounding box
   out.x0 = std::min({int32_t(v0.x), int32_t(v1.x), int32_t(v2.x)});
@@ -64,7 +86,285 @@ uint32_t get_mip_level(float tri_area, float uv_area) {
 #endif
 }
 
+inline float triangle_area(const float2 &v0,
+                           const float2 &v1,
+                           const float2 &v2) {
+
+  // area is found using part of the vector product
+
+  // x = a2 * b3 - a3 * b2
+  // y = a1 * b3 - a3 * b1
+  // z = a1 * b2 - a2 * b1
+
+  // where a = v0 -> v1
+  // where b = v0 -> v2
+
+  // we only care about the z componant which contains the area of the
+  // parallelogram formed. i'm unsure why we dont need to multiply by
+  // 0.5f however when returning the result.
+
+  return (v1.x - v0.x) * (v2.y - v0.y) -
+         (v2.x - v0.x) * (v1.y - v0.y);
+}
+
+// evaluate the gradient field given the following:
+//  normal:   the normal for that edge
+//  poe:      a point on the edge
+//  point:    the location where to sample it
+inline float evaluate(const float2 &normal, const float2 &poe) {
+
+  return normal.x * poe.x + normal.y * poe.y;
+}
+
 } // namespace
+
+// render depth
+void draw_tri_depth(const frame_t &f,
+                    const texture_t &tex,
+                    const triangle_setup_t &s) {
+
+    float v0 = (s.vx[0] * s.bound.x0 + s.vy[0] * s.bound.y0) - s.v[0];
+    float v1 = (s.vx[1] * s.bound.x0 + s.vy[1] * s.bound.y0) - s.v[1];
+    float iw = (s.vx[2] * s.bound.x0 + s.vy[2] * s.bound.y0) - s.v[2];
+
+    uint32_t fb_offset = s.bound.y0 * f._width;
+    uint32_t *dst      = f._pixels + fb_offset;
+    float    *depth    = f._depth + fb_offset;
+
+    for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
+
+      float v0_ = v0;
+      float v1_ = v1;
+      float iw_ = iw;
+
+      for (int x = s.bound.x0; x <= s.bound.x1; ++x) {
+
+        const float v2_ = 1.f - (v0_ + v1_);
+
+        const float w = iw_;
+
+        // triangle edge test
+        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+
+          // depth test
+          if (w > depth[x]) {
+            depth[x] = w;
+
+            const uint8_t r = 255; //  std::min(255, std::max(0, int32_t(w * 32 * 255)));
+            const uint8_t g = r;
+            const uint8_t b = r;
+
+            dst[x] = (r << 16) | (g << 8) | b;
+          }
+
+        }
+
+        // x axis coefficient step
+        v0_ += s.vx[0];
+        v1_ += s.vx[1];
+        iw_ += s.vx[2];
+      }
+
+      // y axis coefficient step
+      v0 += s.vy[0];
+      v1 += s.vy[1];
+      iw += s.vy[2];
+
+      // step the framebuffers
+      dst   += f._width;
+      depth += f._width;
+    }
+}
+
+// render using texture
+void draw_tri_tex_aprox(const frame_t &f,
+                        const texture_t &tex,
+                        const triangle_setup_t &s) {
+
+  const uint32_t SW = triangle_setup_t::slot_iw;
+  const uint32_t SU = triangle_setup_t::slot_u;
+  const uint32_t SV = triangle_setup_t::slot_v;
+
+  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
+  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
+
+  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
+
+  const uint32_t tex_w      = (tex._width  >> s.mip_level);
+  const uint32_t tex_h      = (tex._height >> s.mip_level);
+  const uint32_t tex_mask_u = tex_w - 1;
+  const uint32_t tex_mask_v = tex_h - 1;
+  const uint32_t tex_shift  = tex._wshift - s.mip_level;
+  const uint32_t *texel     = tex._pixels[s.mip_level];
+
+  const float sux = s.vx[SU] * tex_w;
+  const float svx = s.vx[SV] * tex_h;
+  const float suy = s.vy[SU] * tex_w;
+  const float svy = s.vy[SV] * tex_h;
+  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
+  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
+
+  const uint32_t fb_offset = s.bound.y0 * f._width;
+  uint32_t *dst            = f._pixels + fb_offset;
+  float    *depth          = f._depth  + fb_offset;
+
+  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
+
+    float v0_ = v0;
+    float v1_ = v1;
+    float iw_ = iw;
+    float u_  = u;
+    float v_  = v;
+
+    for (int x = s.bound.x0; x <= s.bound.x1;) {
+
+      static const int CHUNK_SIZE = 32;
+      const int x_chunk_end = std::min<int>(s.bound.x1, x + CHUNK_SIZE - 1);
+
+            float iw0  = iw_;
+      const float iw1  = iw_ + s.vx[SW] * CHUNK_SIZE;
+
+            float tu0  =  u_                     / iw0;
+      const float tu1  = (u_ + sux * CHUNK_SIZE) / iw1;
+      const float tudx = (tu1 - tu0) / CHUNK_SIZE;
+
+      int32_t itu0  = int32_t(tu0  * float(0x8000));
+      int32_t itudx = int32_t(tudx * float(0x8000));
+
+            float tv0  =  v_                     / iw0;
+      const float tv1  = (v_ + svx * CHUNK_SIZE) / iw1;
+      const float tvdx = (tv1 - tv0) / CHUNK_SIZE;
+
+      int32_t itv0  = int32_t(tv0  * float(0x8000));
+      int32_t itvdx = int32_t(tvdx * float(0x8000));
+
+      for (; x <= x_chunk_end ; ++x) {
+
+        const float w = iw_;
+
+        // triangle edge test
+        const float v2_ = 1.f - (v0_ + v1_);
+        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+
+          // depth test
+          if (w > depth[x]) {
+            depth[x] = w;
+
+            const int32_t iu = (itu0 >> 15) & tex_mask_u;
+            const int32_t iv = (itv0 >> 15) & tex_mask_v;
+
+            dst[x] = texel[iu + (iv << tex_shift)];
+          }
+        }
+
+        // x axis coefficient step
+        v0_ += s.vx[0];
+        v1_ += s.vx[1];
+        iw_ += s.vx[SW];
+
+        // x axis interpolation step
+        itu0 += itudx;
+        itv0 += itvdx;
+      }
+
+      // x chunk step
+      u_ += sux * CHUNK_SIZE;
+      v_ += svx * CHUNK_SIZE;
+    }
+
+    // y axis coefficient step
+    v0 += s.vy[0];
+    v1 += s.vy[1];
+    iw += s.vy[SW];
+    u  += suy;
+    v  += svy;
+
+    // step the framebuffers
+    dst   += f._width;
+    depth += f._width;
+  }
+}
+
+// render using texture
+void draw_tri_tex(const frame_t &f,
+                  const texture_t &tex,
+                  const triangle_setup_t &s) {
+
+  const uint32_t SW = triangle_setup_t::slot_iw;
+  const uint32_t SU = triangle_setup_t::slot_u;
+  const uint32_t SV = triangle_setup_t::slot_v;
+
+  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
+  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
+
+  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
+
+  const uint32_t tex_w      = (tex._width  >> s.mip_level);
+  const uint32_t tex_h      = (tex._height >> s.mip_level);
+  const uint32_t tex_mask_u = tex_w - 1;
+  const uint32_t tex_mask_v = tex_h - 1;
+  const uint32_t tex_shift  = tex._wshift - s.mip_level;
+  const uint32_t *texel     = tex._pixels[s.mip_level];
+
+  const float sux = s.vx[SU] * tex_w;
+  const float svx = s.vx[SV] * tex_h;
+  const float suy = s.vy[SU] * tex_w;
+  const float svy = s.vy[SV] * tex_h;
+  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
+  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
+
+  const uint32_t fb_offset = s.bound.y0 * f._width;
+  uint32_t *dst            = f._pixels + fb_offset;
+  float    *depth          = f._depth  + fb_offset;
+
+  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
+
+    float v0_ = v0;
+    float v1_ = v1;
+    float iw_ = iw;
+    float u_  = u;
+    float v_  = v;
+
+    for (int x = s.bound.x0; x <= s.bound.x1; ++x) {
+
+      const float v2_ = 1.f - (v0_ + v1_);
+
+      const float w = iw_;
+
+      // triangle edge test
+      if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+
+        // depth test
+        if (w > depth[x]) {
+          depth[x] = w;
+
+          const int32_t iu = int32_t(u_ / iw_) & tex_mask_u;
+          const int32_t iv = int32_t(v_ / iw_) & tex_mask_v;
+
+          dst[x] = texel[iu + (iv << tex_shift)];
+        }
+      }
+
+      // x axis coefficient step
+      v0_ += s.vx[0];
+      v1_ += s.vx[1];
+      iw_ += s.vx[SW];
+      u_  += sux;
+      v_  += svx;
+    }
+
+    // y axis coefficient step
+    v0 += s.vy[0];
+    v1 += s.vy[1];
+    iw += s.vy[SW];
+    u  += suy;
+    v  += svy;
+
+    // step the framebuffers
+    dst   += f._width;
+    depth += f._width;
+  }
+}
 
 void drawTri(const frame_t &frame,
              const triangle_t &t) {
@@ -74,7 +374,7 @@ void drawTri(const frame_t &frame,
   auto v2 = t.vert[1].coord;
 
   // Compute triangle bounding box
-  const recti_t rect = boundTri(frame, v0, v1, v2);
+  const recti_t rect = triangle_bound(frame, v0, v1, v2);
 
   // the signed triangle area
   const float area =
@@ -166,7 +466,7 @@ void drawTriUV(const frame_t &frame,
   auto t2 = t.vert[1].tex;
 
   // Compute triangle bounding box
-  const recti_t rect = boundTri(frame, v0, v1, v2);
+  const recti_t rect = triangle_bound(frame, v0, v1, v2);
 
   // the signed triangle area (screen space)
   const float area =
@@ -295,7 +595,7 @@ void drawTriUV2(const frame_t &frame,
   auto t2 = t.vert[1].tex;
 
   // Compute triangle bounding box
-  const recti_t rect = boundTri(frame, v0, v1, v2);
+  const recti_t rect = triangle_bound(frame, v0, v1, v2);
 
   // the signed triangle area (screen space)
   const float area =
@@ -397,7 +697,7 @@ void drawTriUV2(const frame_t &frame,
         if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
 
           // depth test
-          if (hw > zbf[x]) {
+          if (hw >= zbf[x]) {
 
             const int32_t u = (u0 >> 16) & texum;
             const int32_t v = (v0 >> 16) & texvm;
@@ -447,7 +747,7 @@ void drawTriARGB(const frame_t &frame,
   const auto &t2 = t.vert[1].rgba;
 
   // Compute triangle bounding box
-  const recti_t rect = boundTri(frame, v0, v1, v2);
+  const recti_t rect = triangle_bound(frame, v0, v1, v2);
 
   // the signed triangle area
   const float area =
@@ -550,6 +850,7 @@ struct rast_reference_t : public raster_t {
   rast_reference_t() {
     _cxt = nullptr;
     _frame._pixels = nullptr;
+    _tex = nullptr;
   }
 
   void framebuffer_clear(
@@ -605,9 +906,16 @@ struct rast_reference_t : public raster_t {
       return;
     }
 
+    _tex = tex;
+
     for (const auto &t : triangles) {
       if (t.vert[0].coord.w == 0.f) {
         // signals fully clipped so discard
+        continue;
+      }
+
+      triangle_setup_t setup;
+      if (!setup_triangle(t, setup)) {
         continue;
       }
 
@@ -625,12 +933,17 @@ struct rast_reference_t : public raster_t {
       }
 #endif
 
+#if 1
+//      draw_tri_depth(_frame, *tex, setup);
+      draw_tri_tex_aprox(_frame, *tex, setup);
+#else
       if (tex) {
         drawTriUV2(_frame, *tex, t);
       }
       else {
         drawTriARGB(_frame, *tex, t);
       }
+#endif
     }
   }
 
@@ -639,9 +952,165 @@ struct rast_reference_t : public raster_t {
   void present() override {}
 
 protected:
+
+  bool setup_triangle(const triangle_t &t,
+                      triangle_setup_t &s);
+
+  const texture_t *_tex;
   gl_context_t *_cxt;
   frame_t _frame;
 };
+
+bool rast_reference_t::setup_triangle(const triangle_t &t,
+                                      triangle_setup_t &s) {
+
+  // isolate 2d coordinates
+  const float2 v0{t.vert[0].coord.x, t.vert[0].coord.y};
+  const float2 v1{t.vert[1].coord.x, t.vert[1].coord.y};
+  const float2 v2{t.vert[2].coord.x, t.vert[2].coord.y};
+
+  // compute triangle bounding box
+  s.bound.x0 = std::min({int32_t(v0.x), int32_t(v1.x), int32_t(v2.x)});
+  s.bound.y0 = std::min({int32_t(v0.y), int32_t(v1.y), int32_t(v2.y)});
+  s.bound.x1 = std::max({int32_t(v0.x), int32_t(v1.x), int32_t(v2.x)});
+  s.bound.y1 = std::max({int32_t(v0.y), int32_t(v1.y), int32_t(v2.y)});
+
+  // reject if off screen
+  if (s.bound.x1 < 0)              return false;
+  if (s.bound.x0 > _frame._width)  return false;
+  if (s.bound.y1 < 0)              return false;
+  if (s.bound.y0 > _frame._height) return false;
+
+  // clip against screen bounds
+  s.bound.x0 = std::max(s.bound.x0, 0);
+  s.bound.y0 = std::max(s.bound.y0, 0);
+  s.bound.x1 = std::min(s.bound.x1, _frame._width - 1);
+  s.bound.y1 = std::min(s.bound.y1, _frame._height - 1);
+
+  // find the area of the triangle
+  const float area = triangle_area(v0, v1, v2);
+
+  // remove backfaces
+  if (area > 0) {
+    return false;
+  }
+
+  // the signed area of the UVs (texel space)
+  {
+    const float2 &t0 = t.vert[0].tex;
+    const float2 &t1 = t.vert[1].tex;
+    const float2 &t2 = t.vert[2].tex;
+    const float uv_area =
+      (_tex->_width * _tex->_height) *
+      ((t1.x - t0.x) * (t2.y - t0.y) - (t2.x - t0.x) * (t1.y - t0.y));
+    s.mip_level = get_mip_level(area, uv_area);
+  }
+
+  // find edge vectors
+  const float2 d01 = v1 - v0;
+  const float2 d12 = v2 - v1;
+  const float2 d20 = v0 - v2;
+
+  // cross product gives us normals from the edges
+  // which we 'normalize' to the area of the triangle
+  const float2 n0 = float2::cross(d12) / area;
+  const float2 n1 = float2::cross(d20) / area;
+  const float2 n2 = float2::cross(d01) / area;
+
+  // evaluate the starting position for each interpolant
+  const float s0 = evaluate(n0, v1);
+  const float s1 = evaluate(n1, v2);
+  const float s2 = evaluate(n2, v0);
+
+  // edge function interpolants
+  {
+    s. v[triangle_setup_t::slot_w0] = s0;
+    s.vx[triangle_setup_t::slot_w0] = n0.x;
+    s.vy[triangle_setup_t::slot_w0] = n0.y;
+
+    s. v[triangle_setup_t::slot_w1] = s1;
+    s.vx[triangle_setup_t::slot_w1] = n1.x;
+    s.vy[triangle_setup_t::slot_w1] = n1.y;
+  }
+
+  // XXX: make this float3 and use dot products
+  std::array<float, 9> c;
+
+  // 1/w interpolation
+  {
+    const float iw0 = 1.f / t.vert[0].coord.w;
+    const float iw1 = 1.f / t.vert[1].coord.w;
+    const float iw2 = 1.f / t.vert[2].coord.w;
+
+    c[0] = s0   * iw0;  c[1] = s1   * iw1; c[2] = s2   * iw2;
+    c[3] = n0.x * iw0;  c[4] = n1.x * iw1; c[5] = n2.x * iw2;
+    c[6] = n0.y * iw0;  c[7] = n1.y * iw1; c[8] = n2.y * iw2;
+
+    const uint32_t slot = triangle_setup_t::slot_iw;
+    s. v[slot] = c[0] + c[1] + c[2];
+    s.vx[slot] = c[3] + c[4] + c[5];
+    s.vy[slot] = c[6] + c[7] + c[8];
+  }
+
+#if 0
+  // r
+  {
+    const uint32_t slot = triangle_setup_t::slot_r;
+    const float a0 = t.vert[0].rgba.x;
+    const float a1 = t.vert[1].rgba.x;
+    const float a2 = t.vert[2].rgba.x;
+    s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
+    s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
+    s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
+  }
+
+  // g
+  {
+    const uint32_t slot = triangle_setup_t::slot_g;
+    const float a0 = t.vert[0].rgba.y;
+    const float a1 = t.vert[1].rgba.y;
+    const float a2 = t.vert[2].rgba.y;
+    s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
+    s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
+    s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
+  }
+
+  // b
+  {
+    const uint32_t slot = triangle_setup_t::slot_b;
+    const float a0 = t.vert[0].rgba.z;
+    const float a1 = t.vert[1].rgba.z;
+    const float a2 = t.vert[2].rgba.z;
+    s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
+    s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
+    s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
+  }
+#endif
+
+  // u
+  {
+    const uint32_t slot = triangle_setup_t::slot_u;
+    const float a0 = t.vert[0].tex.x;
+    const float a1 = t.vert[1].tex.x;
+    const float a2 = t.vert[2].tex.x;
+    s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
+    s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
+    s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
+  }
+
+  // v
+  {
+    const uint32_t slot = triangle_setup_t::slot_v;
+    const float a0 = t.vert[0].tex.y;
+    const float a1 = t.vert[1].tex.y;
+    const float a2 = t.vert[2].tex.y;
+    s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
+    s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
+    s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
+  }
+
+  return true;
+}
 
 extern "C" {
 __declspec(dllexport) raster_t *raster_create() { return new rast_reference_t; }

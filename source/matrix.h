@@ -4,6 +4,7 @@
 #include <cmath>
 #include <intrin.h>
 
+#include "common.h"
 #include "GL.h"
 #include "math.h"
 
@@ -308,7 +309,7 @@ struct matrix_manager_t {
       _current = &_projection;
       break;
     default:
-      __debugbreak();
+      DEBUG_BREAK;
     }
   }
 

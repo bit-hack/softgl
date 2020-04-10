@@ -2,6 +2,7 @@ LIBRARY OPENGL32
 EXPORTS
     glAccum
     glActiveTexture
+    glActiveTextureARB
     glAlphaFunc
     glAreTexturesResident
     glArrayElement
@@ -17,6 +18,7 @@ EXPORTS
     glClearDepth
     glClearIndex
     glClearStencil
+    glClientActiveTextureARB
     glClipPlane
     glColor3b
     glColor3bv
@@ -53,6 +55,8 @@ EXPORTS
     glColorMask
     glColorMaterial
     glColorPointer
+    glCompressedTexSubImage2DARB
+    glCompressedTexImage2DARB
     glCopyPixels
     glCopyTexImage1D
     glCopyTexImage2D
@@ -178,6 +182,22 @@ EXPORTS
     glMateriali
     glMaterialiv
     glMatrixMode
+    glMultiTexCoord1dARB
+    glMultiTexCoord1fARB
+    glMultiTexCoord1iARB
+    glMultiTexCoord1sARB
+    glMultiTexCoord2dARB
+    glMultiTexCoord2fARB
+    glMultiTexCoord2iARB
+    glMultiTexCoord2sARB
+    glMultiTexCoord3dARB
+    glMultiTexCoord3fARB
+    glMultiTexCoord3iARB
+    glMultiTexCoord3sARB
+    glMultiTexCoord4dARB
+    glMultiTexCoord4fARB
+    glMultiTexCoord4iARB
+    glMultiTexCoord4sARB
     glMultMatrixd
     glMultMatrixf
     glNewList

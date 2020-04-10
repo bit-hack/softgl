@@ -33,6 +33,10 @@ gl_context_t *getContext() {
 }
 
 BOOL __stdcall wglSwapBuffers_imp(HDC a) {
+#if 0
+  log_t::printf("%s(%p)\n", __func__, (void*)a);
+#endif
+
   if (!gl_context)
     return FALSE;
   Context->on_flush();
@@ -49,7 +53,7 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
 }
 
 HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
-  log_t::printf("%s(%p)\n", __FUNCTION__, (void*)(hdc));
+  log_t::printf("%s(%p)\n", __func__, (void*)hdc);
 
   // lookup the hdc to get the pixel format
   auto itt = wgl.hdcMap.find(hdc);
@@ -71,7 +75,7 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
 }
 
 BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
-  log_t::printf("%s(%p)\n", __FUNCTION__, (void*)(a));
+  log_t::printf("%s(%p)\n", __func__, (void*)a);
 
   if (!a) {
     return false;
@@ -95,7 +99,7 @@ BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
 }
 
 BOOL __stdcall wglMakeCurrent_imp(HDC a, HGLRC b) {
-  log_t::printf("%s(%p, %p)\n", __FUNCTION__, (void*)a, (void*)b);
+  log_t::printf("%s(%p, %p)\n", __func__, (void*)a, (void*)b);
 
   gl_context_t *cxt = (gl_context_t*)b;
   if (b != nullptr) {
@@ -113,6 +117,8 @@ BOOL __stdcall wglSetPixelFormat_imp(HDC hdc,
                                  int iPixelFormat,
                                  const struct PIXELFORMATDESCRIPTOR *ppfd)
 {
+  log_t::printf("%s(%p, %d, %p)\n", __func__, (void*)hdc, iPixelFormat, (void*)ppfd);
+
   if (iPixelFormat <= 0 || size_t(iPixelFormat) > wgl.pixelFormats.size())
     return FALSE;
   // lookup the requested format
@@ -137,17 +143,52 @@ BOOL __stdcall wglSetPixelFormat_imp(HDC hdc,
   return TRUE;
 }
 
+void dump_pixel_format(const PPIXELFORMATDESCRIPTOR ppfd) {
+  log_t::printf("  nSize          : %d\n", (int) ppfd->nSize            );
+  log_t::printf("  nVersion       : %d\n", (int) ppfd->nVersion         );
+  log_t::printf("  dwFlags        : %d\n", (int) ppfd->dwFlags          );
+  log_t::printf("  iPixelType     : %d\n", (int) ppfd->iPixelType       );
+  log_t::printf("  cColorBits     : %d\n", (int) ppfd->cColorBits       );
+  log_t::printf("  cRedBits       : %d\n", (int) ppfd->cRedBits         );
+  log_t::printf("  cRedShift      : %d\n", (int) ppfd->cRedShift        );
+  log_t::printf("  cGreenBits     : %d\n", (int) ppfd->cGreenBits       );
+  log_t::printf("  cGreenShift    : %d\n", (int) ppfd->cGreenShift      );
+  log_t::printf("  cBlueBits      : %d\n", (int) ppfd->cBlueBits        );
+  log_t::printf("  cBlueShift     : %d\n", (int) ppfd->cBlueShift       );
+  log_t::printf("  cAlphaBits     : %d\n", (int) ppfd->cAlphaBits       );
+  log_t::printf("  cAlphaShift    : %d\n", (int) ppfd->cAlphaShift      );
+  log_t::printf("  cAccumBits     : %d\n", (int) ppfd->cAccumBits       );
+  log_t::printf("  cAccumRedBits  : %d\n", (int) ppfd->cAccumRedBits    );
+  log_t::printf("  cAccumGreenBits: %d\n", (int) ppfd->cAccumGreenBits  );
+  log_t::printf("  cAccumBlueBits : %d\n", (int) ppfd->cAccumBlueBits   );
+  log_t::printf("  cAccumAlphaBits: %d\n", (int) ppfd->cAccumAlphaBits  );
+  log_t::printf("  cDepthBits     : %d\n", (int) ppfd->cDepthBits       );
+  log_t::printf("  cStencilBits   : %d\n", (int) ppfd->cStencilBits     );
+  log_t::printf("  cAuxBuffers    : %d\n", (int) ppfd->cAuxBuffers      );
+  log_t::printf("  iLayerType     : %d\n", (int) ppfd->iLayerType       );
+  log_t::printf("  bReserved      : %d\n", (int) ppfd->bReserved        );
+  log_t::printf("  dwLayerMask    : %d\n", (int) ppfd->dwLayerMask      );
+  log_t::printf("  dwVisibleMask  : %d\n", (int) ppfd->dwVisibleMask    );
+  log_t::printf("  dwDamageMask   : %d\n", (int) ppfd->dwDamageMask     );
+}
+
 int __stdcall wglChoosePixelFormat_imp(HDC hdc, const PPIXELFORMATDESCRIPTOR ppfd)
 {
+  log_t::printf("%s(%p)\n", __func__, (void*)ppfd);
   if (!ppfd)
     return 0;
+  dump_pixel_format(ppfd);
   // add pixel format to our list of requested formats
   wgl.pixelFormats.push_back(*ppfd);
   return wgl.pixelFormats.size();
 }
 
-int __stdcall wglDescribePixelFormat_imp(HDC hdc, int iPixelFormat, UINT nBytes,
+int __stdcall wglDescribePixelFormat_imp(HDC hdc,
+                                         int iPixelFormat,
+                                         UINT nBytes,
                                          LPPIXELFORMATDESCRIPTOR ppfd) {
+  log_t::printf("%s(%p, %d, %d, %p)\n", __func__, (void*)hdc, iPixelFormat, (int)nBytes, (void*)ppfd);
+
   if (iPixelFormat <= 0 || iPixelFormat > int(wgl.pixelFormats.size())) {
     return 0;
   }
@@ -188,18 +229,21 @@ int __stdcall wglDescribePixelFormat_imp(HDC hdc, int iPixelFormat, UINT nBytes,
 }
 
 HDC __stdcall wglGetCurrentDC_imp(VOID) {
+  log_t::printf("%s()\n");
   return gl_context ? gl_context->window.getHdc() : nullptr;
 }
 
 PROC __stdcall wglGetProcAddress_imp(LPCSTR a) {
+  log_t::printf("%s(%s)\n", (char*)a);
   PROC proc = (PROC)GetProcAddress(GetModuleHandleA("opengl32.dll"), a);
   if (!proc) {
-    log_t::printf("%s(\"%s\")\n", __FUNCTION__, (void*)(a));
+    log_t::printf("  not found!");
   }
   return proc;
 }
 
 HGLRC __stdcall wglGetCurrentContext_imp(VOID) {
+  log_t::printf("%s()\n");
   DEBUG_BREAK;
   return (HGLRC)gl_context;
 }
@@ -212,6 +256,7 @@ BOOL __stdcall wglCopyContext_imp(HGLRC a, HGLRC b, UINT c) {
 }
 
 BOOL __stdcall wglShareLists_imp(HGLRC a, HGLRC b) {
+  log_t::printf("%s()\n");
   // note: UnrealGold expects this to return true
   return TRUE;
 }
@@ -277,5 +322,6 @@ DWORD __stdcall wglSwapMultipleBuffers_imp(UINT a, CONST WGLSWAP *b) {
 }
 
 const char * __stdcall wglGetExtensionsStringARB_imp(HDC hdc) {
+  log_t::printf("%s(%p)\n", hdc);
   return "";
 }
