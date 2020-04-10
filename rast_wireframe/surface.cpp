@@ -205,6 +205,11 @@ void surface_t::wuline(float2 a, float2 b, uint32_t rgb) {
     return;
   }
 
+  if (std::isnan(a.x) || std::isnan(a.y) ||
+      std::isnan(b.x) || std::isnan(b.y)) {
+    return;
+  }
+
   const float dx = b.x - a.x, dy = b.y - a.y;
   const float adx = fabsf(dx), ady = fabs(dy);
 

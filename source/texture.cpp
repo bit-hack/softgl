@@ -325,6 +325,7 @@ void texture_t::load(uint32_t level, GLenum format, GLenum type, const void *src
     case GL_RGBA:      load_rgba_8(level, src); break;
     case GL_BGR_EXT:   load_bgr_8 (level, src); break;
     case GL_RGB:       load_rgb_8 (level, src); break;
+    case GL_BGRA_EXT:  load_bgra_8(level, src); break;
     default:
       DEBUG_BREAK;
     }
@@ -339,6 +340,37 @@ static inline uint32_t packARGB(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 }
 
 void texture_t::load_rgba_8(uint32_t level, const void *src) {
+
+  const uint32_t swidth  = std::max(1u, _width  >> level);
+  const uint32_t sheight = std::max(1u, _height >> level);
+
+  const uint8_t  *srcy = (const uint8_t *)src;
+        uint32_t *dsty = _pixels[level];
+  assert(dsty && srcy);
+
+  for (uint32_t y = 0; y < sheight; ++y) {
+    const uint8_t  *srcx = srcy;
+          uint32_t *dstx = dsty;
+    for (uint32_t x = 0; x < swidth; ++x) {
+      *dstx = packARGB(
+        0, 
+        (x * 255) / swidth,
+        (y * 255) / sheight,
+        0);
+      *dstx = packARGB(
+        srcx[3],
+        srcx[0],
+        srcx[1],
+        srcx[2]);
+      srcx += 4;
+      dstx += 1;
+    }
+    srcy += swidth * 4;
+    dsty += swidth;
+  }
+}
+
+void texture_t::load_bgra_8(uint32_t level, const void *src) {
 
   const uint32_t swidth  = std::max(1u, _width  >> level);
   const uint32_t sheight = std::max(1u, _height >> level);

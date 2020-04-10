@@ -365,7 +365,7 @@ void __stdcall glColorMask(GLboolean red, GLboolean green, GLboolean blue,
 void __stdcall glColorMaterial(GLenum face, GLenum mode) {
   TRACE();
   //
-  DEBUG_BREAK;
+  // DEBUG_BREAK;  // UT2003
 }
 
 void __stdcall glColorPointer(GLint size, GLenum type, GLsizei stride,
@@ -469,14 +469,17 @@ void __stdcall glDisable(GLenum cap) {
   if (gl_context_t *cxt = Context) {
     auto &state = cxt->state;
     switch (cap) {
-    case GL_TEXTURE_1D:   state.texture1D = false;    break;
-    case GL_TEXTURE_2D:   state.texture2D = false;    break;
-    case GL_ALPHA_TEST:   state.testAlpha = false;    break;
-    case GL_DEPTH_TEST:   state.testDepth = false;    break;
-    case GL_CULL_FACE:    state.cullFace = false;     break;
-    case GL_BLEND:        state.blendFrag = false;    break;
-    case GL_SCISSOR_TEST: state.testScissor = false;  break;
-    case GL_STENCIL_TEST: state.testStencil = false;  break;
+    case GL_TEXTURE_1D:          state.texture1D       = false; break;
+    case GL_TEXTURE_2D:          state.texture2D       = false; break;
+    case GL_ALPHA_TEST:          state.testAlpha       = false; break;
+    case GL_DEPTH_TEST:          state.testDepth       = false; break;
+    case GL_CULL_FACE:           state.cullFace        = false; break;
+    case GL_BLEND:               state.blendFrag       = false; break;
+    case GL_SCISSOR_TEST:        state.testScissor     = false; break;
+    case GL_STENCIL_TEST:        state.testStencil     = false; break;
+    case GL_COLOR_ARRAY:         state.array_color     = false; break;
+    case GL_VERTEX_ARRAY:        state.array_vertex    = false; break;
+    case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = false; break;
     default:
       break;
     }
@@ -486,13 +489,14 @@ void __stdcall glDisable(GLenum cap) {
 void __stdcall glDisableClientState(GLenum array) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glDrawArrays(GLenum mode, GLint first, GLsizei count) {
   TRACE();
-  //
-  DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glDrawArrays(mode, first, count);
+  }
 }
 
 void __stdcall glDrawBuffer(GLenum mode) {
@@ -515,7 +519,9 @@ void __stdcall glDrawRangeElements(GLenum mode,
                                    GLenum type,
                                    const void * indices) {
   TRACE();
-  DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    cxt->primative.glDrawRangeElements(mode, start, end, count, type, indices);
+  }
 }
 
 void __stdcall glDrawPixels(GLsizei width, GLsizei height, GLenum format,
@@ -556,6 +562,9 @@ void __stdcall glEnable(GLenum cap) {
     case GL_BLEND:        state.blendFrag = true;     break;
     case GL_SCISSOR_TEST: state.testScissor = true;   break;
     case GL_STENCIL_TEST: state.testStencil = true;   break;
+    case GL_COLOR_ARRAY:  state.array_color = true;   break;
+    case GL_VERTEX_ARRAY: state.array_vertex = true;  break;
+    case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = true; break;
     default:
       break;
     }
@@ -1099,13 +1108,13 @@ void __stdcall glLightModelf(GLenum pname, GLfloat param) {
 void __stdcall glLightModelfv(GLenum pname, const GLfloat *params) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glLightModeli(GLenum pname, GLint param) {
   TRACE();
   //
-  DEBUG_BREAK;
+  // DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glLightModeliv(GLenum pname, const GLint *params) {
@@ -1117,13 +1126,13 @@ void __stdcall glLightModeliv(GLenum pname, const GLint *params) {
 void __stdcall glLightf(GLenum light, GLenum pname, GLfloat param) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
   TRACE();
   //
-  DEBUG_BREAK;
+  // DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glLighti(GLenum light, GLenum pname, GLint param) {
@@ -1253,7 +1262,7 @@ void __stdcall glMaterialf(GLenum face, GLenum pname, GLfloat param) {
 void __stdcall glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
   TRACE();
   //
-  DEBUG_BREAK;
+  // DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glMateriali(GLenum face, GLenum pname, GLint param) {
@@ -1359,7 +1368,7 @@ void __stdcall glNormalPointer(GLenum type, GLsizei stride,
                                const GLvoid *pointer) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glOrtho(GLdouble left, GLdouble right, GLdouble bottom,
@@ -2001,13 +2010,13 @@ void __stdcall glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
 void __stdcall glTexEnvfv(GLenum target, GLenum pname, const GLfloat *params) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glTexEnvi(GLenum target, GLenum pname, GLint param) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glTexEnviv(GLenum target, GLenum pname, const GLint *params) {
@@ -2043,7 +2052,7 @@ void __stdcall glTexGenfv(GLenum coord, GLenum pname, const GLfloat *params) {
 void __stdcall glTexGeni(GLenum coord, GLenum pname, GLint param) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glTexGeniv(GLenum coord, GLenum pname, const GLint *params) {
@@ -2423,10 +2432,10 @@ void __stdcall glMultiTexCoord4sARB(GLenum target, GLshort s, GLshort t,
 
 void __stdcall glActiveTextureARB(GLenum texture) {
   TRACE();
-  DEBUG_BREAK;
+//  DEBUG_BREAK; UT2003
 }
 
 void __stdcall glClientActiveTextureARB(GLenum texture) {
   TRACE();
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }

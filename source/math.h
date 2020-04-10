@@ -161,6 +161,7 @@ struct vec4_t {
   }
 
 };  // vec4_t
+#pragma pack(pop)
 
 namespace {
 

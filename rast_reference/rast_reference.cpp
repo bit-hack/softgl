@@ -860,20 +860,12 @@ struct rast_reference_t : public raster_t {
     uint32_t clear_color,
     float clear_depth,
     uint32_t clear_stencil) override {
-
-    const int32_t area = _frame._width * _frame._height;
-    if (color) {
-      const uint32_t *end = _frame._pixels + area;
-      uint32_t *ptr = _frame._pixels;
-      for (; ptr != end; ++ptr) {
-        *ptr = clear_color;
+    if (_cxt) {
+      if (color) {
+        _cxt->buffer.clear_colour(0x202020);
       }
-    }
-    if (depth) {
-      const float *end = _frame._depth + area;
-      float *ptr = _frame._depth;
-      for (; ptr != end; ++ptr) {
-        *ptr = 0.f;
+      if (depth) {
+        _cxt->buffer.clear_depth(0.f);
       }
     }
   }

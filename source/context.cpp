@@ -4,7 +4,9 @@
 #include "matrix.h"
 
 gl_context_t::gl_context_t(HWND hwnd, HDC hdc)
-  : window(hwnd, hdc) {
+  : window(hwnd, hdc)
+  , primative(*this)
+{
 }
 
 bool gl_context_t::on_create() {

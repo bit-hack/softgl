@@ -11,6 +11,7 @@
 enum matrix_mode_t {
   GL_MATRIXMODE_MODELVIEW,
   GL_MATRIXMODE_PROJECTION,
+  GL_MATRIXMODE_TEXTURE,
 };
 
 struct matrix_t {
@@ -292,6 +293,7 @@ struct matrix_manager_t {
   matrix_manager_t()
     : _modelview(GL_MATRIXMODE_MODELVIEW)
     , _projection(GL_MATRIXMODE_PROJECTION)
+    , _texture(GL_MATRIXMODE_TEXTURE)
     , _current(&_modelview)
     , _dirty(true)
   {
@@ -308,6 +310,9 @@ struct matrix_manager_t {
     case GL_PROJECTION:
       _current = &_projection;
       break;
+    case GL_TEXTURE:  // UT2003
+      _current = &_texture;
+      break;
     default:
       DEBUG_BREAK;
     }
@@ -320,6 +325,10 @@ struct matrix_manager_t {
     if (_current == &_projection) {
       return GL_PROJECTION;
     }
+    if (_current == &_texture) {
+      return GL_TEXTURE;
+    }
+    DEBUG_BREAK;
     return GL_INVALID_ENUM;
   }
 
@@ -427,7 +436,7 @@ struct matrix_manager_t {
   }
 
 protected:
-  matrix_stack_t _modelview, _projection;
+  matrix_stack_t _modelview, _projection, _texture;
   matrix_stack_t *_current;
   GLenum _mode;
 

@@ -33,12 +33,12 @@ struct buffer_manager_t {
     }
   }
 
-  void clear_depth() {
+  void clear_depth(const float value) {
     const int32_t area = _width * _height;
     const float *end = _depth + area;
     float *ptr = _depth;
     for (; ptr != end; ++ptr) {
-      *ptr = 0.f;
+      *ptr = value;
     }
   }
 

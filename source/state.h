@@ -10,6 +10,8 @@ struct state_manager_t {
   state_manager_t() {
     memset(this, 0, sizeof(*this));
     clearColor = 0x101010;
+
+    array_vertex = true;
   }
 
   GLenum beginMode;
@@ -32,4 +34,8 @@ struct state_manager_t {
 
   bool texture1D;   // GL_TEXTURE_1D
   bool texture2D;   // GL_TEXTURE_2D
+
+  bool array_color;
+  bool array_vertex;
+  bool array_tex_coord;
 };

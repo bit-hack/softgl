@@ -22,6 +22,21 @@ struct raster_wire_t : public raster_t {
 
   void framebuffer_aquire() override {}
 
+  void framebuffer_clear(
+    bool color,
+    bool depth,
+    bool stencil,
+    uint32_t clear_color,
+    float clear_depth,
+    uint32_t clear_stencil) override {
+    if (_cxt) {
+      _cxt->buffer.clear_colour(0x202020);
+      if (depth) {
+        _cxt->buffer.clear_depth(0.f);
+      }
+    }
+  }
+
   bool start(gl_context_t &cxt) override {
     _cxt = &cxt;
     return true;

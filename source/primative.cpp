@@ -205,7 +205,6 @@ void primative_manager_t::clip_triangles() {
     const auto &v0 = t.vert[0];
     const auto &v1 = t.vert[1];
     const auto &v2 = t.vert[2];
-
 #if 0
     if (_is_backfacing(v0.coord, v1.coord, v2.coord)) {
       // discard backfacing triangle
@@ -318,33 +317,43 @@ void primative_manager_t::glTexCoordPointer(GLint size, GLenum type,
 
 void primative_manager_t::glArrayElement(GLint i) {
 
+  const auto &state = _cxt.state;
+  if (!state.array_vertex) {
+    return;
+  }
+  if (!_array_vertex._pointer) {
+    return;
+  }
+  
   // vertex coordinates
   float2 uv = {0.f, 0.f};
-  if (_array_tex_coord._pointer) {
-    if (_array_tex_coord._type != GL_FLOAT)
-      DEBUG_BREAK;
-    // find tex coord
-    const uint8_t * t = (const uint8_t *)_array_tex_coord._pointer;
-    t += i * _array_tex_coord._stride;
-    const float *b = (const float *)t;
-    uv = float2{b[0], b[1]};
+  if (state.array_tex_coord) {
+    if (_array_tex_coord._pointer) {
+      if (_array_tex_coord._type != GL_FLOAT)
+        DEBUG_BREAK;
+      // find tex coord
+      const uint8_t * t = (const uint8_t *)_array_tex_coord._pointer;
+      t += i * _array_tex_coord._stride;
+      const float *b = (const float *)t;
+      uv = float2{b[0], b[1]};
+    }
   }
 
   // color
   float4 argb = {1.f, 1.f, 1.f, 1.f};
-  if (_array_color._pointer) {
-    if (_array_color._type != GL_UNSIGNED_BYTE)
-      DEBUG_BREAK;
-    const uint8_t *c = (const uint8_t *)_array_color._pointer;
-    c += i * _array_color._stride;
-    argb = {_array_color._size > 3 ? float(c[3] / 256.f) : 1.f,
-            _array_color._size > 0 ? float(c[0] / 256.f) : 1.f,
-            _array_color._size > 1 ? float(c[1] / 256.f) : 1.f,
-            _array_color._size > 2 ? float(c[2] / 256.f) : 1.f};
+  if (state.array_color) {
+    if (_array_color._pointer) {
+      if (_array_color._type != GL_UNSIGNED_BYTE)
+        DEBUG_BREAK;
+      const uint8_t *c = (const uint8_t *)_array_color._pointer;
+      c += i * _array_color._stride;
+      argb = {_array_color._size > 3 ? float(c[3] / 256.f) : 1.f,
+              _array_color._size > 0 ? float(c[0] / 256.f) : 1.f,
+              _array_color._size > 1 ? float(c[1] / 256.f) : 1.f,
+              _array_color._size > 2 ? float(c[2] / 256.f) : 1.f};
+    }
   }
 
-  if (!_array_vertex._pointer)
-    return;
   // support gl float vertex element type
   if (_array_vertex._type != GL_FLOAT)
     DEBUG_BREAK;
@@ -368,4 +377,43 @@ void primative_manager_t::glArrayElement(GLint i) {
 void primative_manager_t::glDrawElements(GLenum mode, GLsizei count,
                                          GLenum type, const GLvoid *indices) {
   DEBUG_BREAK;
+}
+
+
+// mode
+//      Specifies what kind of primitives to render. Symbolic constants GL_POINTS,
+//      GL_LINE_STRIP, GL_LINE_LOOP, GL_LINES, GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN,
+//      GL_TRIANGLES, GL_QUAD_STRIP, GL_QUADS, and GL_POLYGON are accepted. 
+// first
+//      Specifies the starting index in the enabled arrays. 
+// count
+//      Specifies the number of indices to be rendered. 
+void primative_manager_t::glDrawArrays(GLenum mode, GLint first, GLsizei count) {
+  glBegin(mode);
+  for (int i = 0; i < count; ++i) {
+    glArrayElement(first + i);
+  }
+  glEnd();
+}
+
+void primative_manager_t::glDrawRangeElements(GLenum mode, GLuint start,
+                                              GLuint end, GLsizei count,
+                                              GLenum type,
+                                              const void *indices) {
+  switch (type) {
+  case GL_UNSIGNED_SHORT:
+  {
+    glBegin(mode);
+    const uint16_t *ind = (const uint16_t *)indices;
+    for (int i = 0; i < count; ++i) {
+      const uint16_t index = ind[i];
+      assert(index >= start && index <= end);
+      glArrayElement(index);
+    }
+    glEnd();
+  }
+  break;
+  default:
+    DEBUG_BREAK;
+  }
 }

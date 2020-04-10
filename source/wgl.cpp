@@ -47,8 +47,8 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
     Context->raster.inst->present();
   }
   GdiHook.invalidate(gl_context->window.getHwnd());
-  Context->buffer.clear_colour(0x202020);
-  Context->buffer.clear_depth();
+//  Context->buffer.clear_colour(0x202020);
+//  Context->buffer.clear_depth();
   return TRUE;
 }
 

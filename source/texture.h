@@ -31,6 +31,7 @@ struct texture_t {
   void load_rgba_8(uint32_t level, const void *src);
   void load_bgr_8(uint32_t level, const void *src);
   void load_rgb_8(uint32_t level, const void *src);
+  void load_bgra_8(uint32_t level, const void *src);
 
   void generateMipLevels();
 

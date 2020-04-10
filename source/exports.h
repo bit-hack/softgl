@@ -74,6 +74,9 @@ void __stdcall glDrawArrays(GLenum mode, GLint first, GLsizei count);
 void __stdcall glDrawBuffer(GLenum mode);
 void __stdcall glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid * indices);
 void __stdcall glDrawPixels(GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid * pixels);
+void __stdcall glDrawRangeElements(GLenum mode, GLuint start, GLuint end,
+                                   GLsizei count, GLenum type,
+                                   const void *indices);
 void __stdcall glEdgeFlag(GLboolean flag);
 void __stdcall glEdgeFlagPointer(GLsizei stride, const GLvoid * pointer);
 void __stdcall glEdgeFlagv(const GLboolean * flag);
@@ -346,6 +349,41 @@ void __stdcall glPushAttrib(GLbitfield mask);
 void __stdcall glPopAttrib(void);
 void __stdcall glPushClientAttrib(GLbitfield mask);
 void __stdcall glPopClientAttrib(void);
+
+void __stdcall glCompressedTexSubImage2DARB(GLenum target, GLint level,
+                                            GLint xoffset, GLint yoffset,
+                                            GLsizei width, GLsizei height,
+                                            GLenum format, GLsizei imageSize,
+                                            GLvoid *data);
+void __stdcall glCompressedTexImage2DARB(GLenum target, GLint level,
+                                         GLint internalformat, GLsizei width,
+                                         GLsizei height, GLint border,
+                                         GLsizei imageSize, GLvoid *data);
+void __stdcall glMultiTexCoord1dARB(GLenum target, GLdouble s);
+void __stdcall glMultiTexCoord1fARB(GLenum target, GLfloat s);
+void __stdcall glMultiTexCoord1iARB(GLenum target, GLint s);
+void __stdcall glMultiTexCoord1sARB(GLenum target, GLshort s);
+void __stdcall glMultiTexCoord2dARB(GLenum target, GLdouble s, GLdouble t);
+void __stdcall glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t);
+void __stdcall glMultiTexCoord2iARB(GLenum target, GLint s, GLint t);
+void __stdcall glMultiTexCoord2sARB(GLenum target, GLshort s, GLshort t);
+void __stdcall glMultiTexCoord3dARB(GLenum target, GLdouble s, GLdouble t,
+                                    GLdouble r);
+void __stdcall glMultiTexCoord3fARB(GLenum target, GLfloat s, GLfloat t,
+                                    GLfloat r);
+void __stdcall glMultiTexCoord3iARB(GLenum target, GLint s, GLint t, GLint r);
+void __stdcall glMultiTexCoord3sARB(GLenum target, GLshort s, GLshort t,
+                                    GLshort r);
+void __stdcall glMultiTexCoord4dARB(GLenum target, GLdouble s, GLdouble t,
+                                    GLdouble r, GLdouble q);
+void __stdcall glMultiTexCoord4fARB(GLenum target, GLfloat s, GLfloat t,
+                                    GLfloat r, GLfloat q);
+void __stdcall glMultiTexCoord4iARB(GLenum target, GLint s, GLint t, GLint r,
+                                    GLint q);
+void __stdcall glMultiTexCoord4sARB(GLenum target, GLshort s, GLshort t,
+                                    GLshort r, GLshort q);
+void __stdcall glActiveTextureARB(GLenum texture);
+void __stdcall glClientActiveTextureARB(GLenum texture);
 } // extern "C"
 
 extern "C" {
