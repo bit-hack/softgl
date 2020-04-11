@@ -87,7 +87,7 @@ protected:
     GLenum _type;
     GLsizei _stride;
     GLint _size;
-    const void *_pointer;
+    const uint8_t *_pointer;
   };
 
   gl_context_t &_cxt;

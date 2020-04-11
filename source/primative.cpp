@@ -340,7 +340,7 @@ void primative_manager_t::glVertexPointer(GLint size, GLenum type,
   _array_vertex._size = size;
   _array_vertex._type = type;
   _array_vertex._stride = stride ? stride : (getGLTypeSize(type) * size);
-  _array_vertex._pointer = (const void *)pointer;
+  _array_vertex._pointer = (const uint8_t *)pointer;
 }
 
 void primative_manager_t::glColorPointer(GLint size, GLenum type,
@@ -349,7 +349,7 @@ void primative_manager_t::glColorPointer(GLint size, GLenum type,
   _array_color._size = size;
   _array_color._type = type;
   _array_color._stride = stride ? stride : (getGLTypeSize(type) * size);
-  _array_color._pointer = (const void *)pointer;
+  _array_color._pointer = (const uint8_t *)pointer;
 }
 
 void primative_manager_t::glTexCoordPointer(GLint size, GLenum type,
@@ -358,7 +358,7 @@ void primative_manager_t::glTexCoordPointer(GLint size, GLenum type,
   _array_tex_coord._size = size;
   _array_tex_coord._type = type;
   _array_tex_coord._stride = stride ? stride : (getGLTypeSize(type) * size);
-  _array_tex_coord._pointer = (const void *)pointer;
+  _array_tex_coord._pointer = (const uint8_t *)pointer;
 }
 
 void primative_manager_t::glArrayElement(GLint i) {
@@ -389,14 +389,28 @@ void primative_manager_t::glArrayElement(GLint i) {
   float4 argb = {1.f, 1.f, 1.f, 1.f};
   if (state.array_color) {
     if (_array_color._pointer) {
-      if (_array_color._type != GL_UNSIGNED_BYTE)
+      switch (_array_color._type) {
+      case GL_UNSIGNED_BYTE:
+      {
+        const uint8_t *c = (_array_color._pointer + i * _array_color._stride);
+        argb = {_array_color._size > 3 ? float(c[3] / 256.f) : 1.f,
+                _array_color._size > 0 ? float(c[0] / 256.f) : 1.f,
+                _array_color._size > 1 ? float(c[1] / 256.f) : 1.f,
+                _array_color._size > 2 ? float(c[2] / 256.f) : 1.f};
+      }
+        break;
+      case GL_FLOAT:
+      {
+        const float *c = (const float *)(_array_color._pointer + i * _array_color._stride);
+        argb = {_array_color._size > 3 ? c[3] : 1.f,
+                _array_color._size > 0 ? c[0] : 1.f,
+                _array_color._size > 1 ? c[1] : 1.f,
+                _array_color._size > 2 ? c[2] : 1.f};
+      }
+        break;
+      default:
         DEBUG_BREAK;
-      const uint8_t *c = (const uint8_t *)_array_color._pointer;
-      c += i * _array_color._stride;
-      argb = {_array_color._size > 3 ? float(c[3] / 256.f) : 1.f,
-              _array_color._size > 0 ? float(c[0] / 256.f) : 1.f,
-              _array_color._size > 1 ? float(c[1] / 256.f) : 1.f,
-              _array_color._size > 2 ? float(c[2] / 256.f) : 1.f};
+      }
     }
   }
 

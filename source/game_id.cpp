@@ -82,6 +82,9 @@ game_id_t getGameId()
   log_t::printf("executable hash: 0x%llx\n", hash);
 
   switch (hash) {
+  case 0xf45771674923d6a5:  // yquake2  (quake2-20200324-9acb99e.zip)
+    game_id = e_quake_2;
+    break;
   case 0x2365c561bb63848e:
     game_id = e_ut99_goty;
     break;
