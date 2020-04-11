@@ -7,6 +7,7 @@
 #include <Windows.h>
 
 #include "game_id.h"
+#include "log.h"
 
 
 static uint64_t pearsonHash(const uint8_t *x, size_t len) 
@@ -76,8 +77,23 @@ game_id_t getGameId()
   name[name.size() - 1] = '\0';
   // query list of known hashes
   const uint64_t hash = fileHash(name.data());
+
+  log_t::printf("executable name: %s\n", name.data());
+  log_t::printf("executable hash: 0x%llx\n", hash);
+
   switch (hash) {
-  case 0:
+  case 0x2365c561bb63848e:
+    game_id = e_ut99_goty;
+    break;
+  case 0x58908a8fe82c5ad4:
+    game_id = e_quake_3;
+    break;
+  case 0xc388218ae8925ad4:
+    game_id = e_ut2003_demo;
+    break;
+  case 0x3b86fbcbf56b79bf:
+    game_id = e_half_life_of_demo;
+    break;
   default:
     game_id = e_unknown;
   }

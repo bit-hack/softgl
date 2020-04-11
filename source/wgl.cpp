@@ -13,6 +13,7 @@
 #include "game_id.h"
 #include "gdi_hook.h"
 #include "log.h"
+#include "game_id.h"
 
 
 struct hdc_info_t {
@@ -46,9 +47,22 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   if (Context->raster.inst) {
     Context->raster.inst->present();
   }
+
+  if (Context->user_cmds.screenshot) {
+    Context->buffer.save_bmp();
+    Context->user_cmds.screenshot = false;
+  }
+
   GdiHook.invalidate(gl_context->window.getHwnd());
-//  Context->buffer.clear_colour(0x202020);
-//  Context->buffer.clear_depth();
+
+  switch (getGameId()) {
+  case e_ut99_goty:
+  case e_half_life_of_demo:
+    // XXX: we force a clear here until we have proper depth buffer control
+    Context->buffer.clear_colour(0x202020);
+    Context->buffer.clear_depth(-100.f);
+  }
+
   return TRUE;
 }
 
@@ -75,23 +89,26 @@ HGLRC __stdcall wglCreateContext_imp(HDC hdc) {
 }
 
 BOOL __stdcall wglDeleteContext_imp(HGLRC a) {
-  log_t::printf("%s(%p)\n", __func__, (void*)a);
+  log_t::printf("%s(%p)\n", __func__, (void *)a);
 
   if (!a) {
     return false;
   }
   gl_context_t *cxt = (gl_context_t *)a;
-  if (gl_context == cxt) {
-    // this is the current context
-    gl_context = nullptr;
-  }
-  cxt->on_destroy();
-  // unhook this window
-  GdiHook.unhook(*cxt);
+
   // erase the context
   auto itt = wgl.contexts.find(cxt);
   if (itt != wgl.contexts.end()) {
-    log_t::printf("context deleted -> %p\n", (void*)*itt);
+
+    if (gl_context == cxt) {
+      // this is the current context
+      gl_context = nullptr;
+    }
+    cxt->on_destroy();
+    // unhook this window
+    GdiHook.unhook(*cxt);
+
+    log_t::printf("context deleted -> %p\n", (void *)*itt);
     delete *itt;
     wgl.contexts.erase(itt);
   }

@@ -49,7 +49,19 @@ struct gl_context_t {
   void on_resize();
   void on_make_current();
 
+  struct user_cmds_t {
+    user_cmds_t()
+      : screenshot(false)
+      , dmp_obj(false)
+      , dmp_textures(false) {
+    }
+    bool screenshot;
+    bool dmp_obj;
+    bool dmp_textures;
+  } user_cmds;
+
 protected:
+
   gl_context_t(const gl_context_t &) = delete;
 };
 

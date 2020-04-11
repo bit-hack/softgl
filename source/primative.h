@@ -38,6 +38,7 @@ struct primative_manager_t {
 
   void clip_triangles();
   void convert_to_dc();
+  void cull_triangles();
 
   void latch_uv(float2 t) { _latch_uv = t; }
 

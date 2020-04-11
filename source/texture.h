@@ -20,7 +20,6 @@ struct texture_t {
 
   format_t _format;
 
-
   uint32_t _width;
   uint32_t _wshift;  // log2(_width)
 

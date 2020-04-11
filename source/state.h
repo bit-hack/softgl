@@ -14,7 +14,17 @@ struct state_manager_t {
     array_vertex = true;
     cullMode = GL_BACK;
     cullFace = true;
+
+    frontFace = GL_CCW;
+
+    depthRangeNear = 0.f;
+    depthRangeFar = 1.f;
   }
+
+  // set by glDepthRange
+  // this used by quake3 when drawing the sky
+  GLfloat depthRangeNear;
+  GLfloat depthRangeFar;
 
   GLenum beginMode;
   uint32_t clearColor;
@@ -26,6 +36,8 @@ struct state_manager_t {
   GLenum blendFuncSrc;
   GLenum blendFuncDst;
   GLenum depthFunc;
+
+  GLenum frontFace; // defaults to GL_CCW
 
   bool testAlpha;   // GL_ALPHA_TEST
   bool testDepth;   // GL_DEPTH_TEST

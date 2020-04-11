@@ -485,3 +485,12 @@ inline vec2_t<type_t> operator / (const float lhs, const vec2_t<type_t> & rhs) {
 }
 
 }  // namespace
+
+namespace {
+
+template <typename type_t>
+inline type_t clamp(const type_t min, const type_t val, const type_t max) {
+  return (val < min) ? min : ((val > max) ? max : val);
+}
+
+} // namespace {}

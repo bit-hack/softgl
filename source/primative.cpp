@@ -1,6 +1,7 @@
 #include "common.h"
 #include "context.h"
 #include "primative.h"
+#include "game_id.h"
 
 
 namespace {
@@ -22,7 +23,6 @@ size_t getGLTypeSize(GLenum type) {
 
 } // namespace {}
 
-
 void primative_manager_t::_push_vertex(const vertex_t &v) {
   _vertex.emplace_back(v);
   _vertex.back().coord = Context->matrix.transform(v.coord);
@@ -37,6 +37,9 @@ void primative_manager_t::glBegin(GLenum mode) {
 }
 
 void primative_manager_t::glEnd() {
+
+  // Node: default OpenGL front face is counter clockwise winding
+
   switch (_mode) {
   case GL_TRIANGLES:
     _asm_triangles();
@@ -48,11 +51,11 @@ void primative_manager_t::glEnd() {
     // note: used almost exclusively by quake3
     _asm_triangle_strip();
     break;
-  case GL_QUADS:            // untested
+  case GL_QUADS:
     _asm_quads();
     break;
-  case GL_QUAD_STRIP:       // untested
-//    _asm_quad_strip();
+  case GL_QUAD_STRIP:
+    _asm_quad_strip();
     break;
   case GL_POLYGON:
     _asm_polygon();
@@ -77,20 +80,30 @@ void primative_manager_t::_asm_triangles() {
   for (size_t i = 2; i < _vertex.size(); i += 3) {
     const triangle_t tri = {
       _vertex[i - 2],
-      _vertex[i - 1],
-      _vertex[i - 0]};
+      _vertex[i - 0],
+      _vertex[i - 1]};
     _triangles.push_back(tri);
   }
   _vertex.clear();
 }
 
 void primative_manager_t::_asm_triangle_strip() {
+/*
+    3---1
+   / \ / \
+  4---2---0
+
+  {2, 1, 0}
+  {3, 1, 2}
+  {4, 3, 2}
+*/
   for (size_t i = 2; i < _vertex.size(); i += 1) {
-      const int32_t b = (i & 1);
+      const int32_t b = (i & 1); // if odd
       const triangle_t tri = {
-        _vertex[i - 2],
-        _vertex[i - (1 ^ b)],
-        _vertex[i - (0 ^ b)]};
+                                // 2  3  4  5  6
+        _vertex[i - 2],         // 0  1  2  ...
+        _vertex[i - (0 ^ b)],   // 2  3  4  ...
+        _vertex[i - (1 ^ b)]};  // 1  2  3  ...
       _triangles.push_back(tri);
   }
   _vertex.clear();
@@ -100,25 +113,30 @@ void primative_manager_t::_asm_triangle_fan() {
   for (size_t i = 2; i < _vertex.size(); i += 1) {
     const triangle_t tri = {
       _vertex[0],
-      _vertex[i - 1],
-      _vertex[i - 0]};
+      _vertex[i - 0],
+      _vertex[i - 1]};
     _triangles.push_back(tri);
   }
   _vertex.clear();
 }
 
 void primative_manager_t::_asm_quads() {
+/*
+    0----3
+    |    |
+    1----2
+*/
   for (size_t i = 3; i < _vertex.size(); i += 4) {
     const triangle_t t1 = {
+      _vertex[i - 3],
       _vertex[i - 0],
-      _vertex[i - 1],
-      _vertex[i - 2]
+      _vertex[i - 1]
     };
     _triangles.push_back(t1);
     const triangle_t t2 = {
-      _vertex[i - 0],
-      _vertex[i - 2],
-      _vertex[i - 3]
+      _vertex[i - 3],
+      _vertex[i - 1],
+      _vertex[i - 2]
     };
     _triangles.push_back(t2);
   }
@@ -131,8 +149,8 @@ void primative_manager_t::_asm_quad_strip() {
 void primative_manager_t::_asm_polygon() {
   for (size_t i = 2; i < _vertex.size(); i += 1) {
     const triangle_t tri = {
-      _vertex[i - 1],
       _vertex[i - 0],
+      _vertex[i - 1],
       _vertex[0]
     };
     _triangles.push_back(tri);
@@ -141,8 +159,10 @@ void primative_manager_t::_asm_polygon() {
 }
 
 static bool _is_backfacing(const float4 & a, const float4 & b, const float4 & c) {
-  // test z componant of cross product
-  return ( (c.x-a.x)*(c.y-b.y) - (c.x-b.x)*(c.y-a.y) ) > 0.f;
+  const float2 v0 = float2{b.x - a.x, b.y - a.y};
+  const float2 v1 = float2{c.x - a.x, c.y - a.y};
+  const float2 c0 = float2{-v0.y, v0.x};
+  return float2::dot(c0, v1) > 0.f;
 }
 
 void primative_manager_t::clip_triangles() {
@@ -198,8 +218,6 @@ void primative_manager_t::clip_triangles() {
     vert[head++] = vertex_t{midPos, midCol, midTex};
   };
 
-  auto &state = _cxt.state;
-
   uint32_t cutoff = _triangles.size();
   while (cutoff) {
 
@@ -208,25 +226,10 @@ void primative_manager_t::clip_triangles() {
     const auto &v1 = t.vert[1];
     const auto &v2 = t.vert[2];
 
-    // backface culling
-    if (state.cullFace) {
-      const bool backface = _is_backfacing(v0.coord, v1.coord, v2.coord);
-      bool discard = false;
-      discard |= (state.cullMode == GL_FRONT) && !backface;
-      discard |= (state.cullMode == GL_BACK) && backface;
-      discard |= (state.cullMode == GL_FRONT_AND_BACK);
-
-      if (discard) {
-        // discard backfacing triangle
-        memset(&t, 0, sizeof(t));
-        continue;
-      }
-    }
-
     // bit positive when behind near plane
-    const int32_t c0 = (v0.coord.z <= -v0.coord.w) << 0;  // 1
-    const int32_t c1 = (v1.coord.z <= -v1.coord.w) << 1;  // 2
-    const int32_t c2 = (v2.coord.z <= -v2.coord.w) << 2;  // 4
+    const int32_t c0 = (v0.coord.z < -v0.coord.w) << 0;  // 1
+    const int32_t c1 = (v1.coord.z < -v1.coord.w) << 1;  // 2
+    const int32_t c2 = (v2.coord.z < -v2.coord.w) << 2;  // 4
     const uint32_t cc = c0 | c1 | c2;
 
     if (cc == 0) {
@@ -269,6 +272,39 @@ void primative_manager_t::clip_triangles() {
     if (head >= 4)
       // append extra triangle
       _triangles.push_back(triangle_t{vert[0], vert[2], vert[3]});
+  }
+}
+
+void primative_manager_t::cull_triangles() {
+  auto &state = _cxt.state;
+
+  bool is_ut99 = getGameId() == e_ut99_goty;
+
+  if (state.cullFace) {
+    for (triangle_t &t : _triangles) {
+
+      const auto &v0 = t.vert[0];
+      const auto &v1 = t.vert[1];
+      const auto &v2 = t.vert[2];
+
+      // backface culling
+      bool backface = _is_backfacing(v0.coord, v1.coord, v2.coord);
+
+      if (state.frontFace == GL_CW || is_ut99) {
+        backface = !backface;
+      }
+
+      bool discard = false;
+      discard |= (state.cullMode == GL_FRONT) && !backface;
+      discard |= (state.cullMode == GL_BACK) && backface;
+      discard |= (state.cullMode == GL_FRONT_AND_BACK);
+
+      if (discard) {
+        // discard backfacing triangle
+        memset(&t, 0, sizeof(t));
+        continue;
+      }
+    }
   }
 }
 
@@ -334,7 +370,7 @@ void primative_manager_t::glArrayElement(GLint i) {
   if (!_array_vertex._pointer) {
     return;
   }
-  
+
   // vertex coordinates
   float2 uv = {0.f, 0.f};
   if (state.array_tex_coord) {

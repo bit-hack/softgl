@@ -74,7 +74,9 @@ bool gdi_hook_t::invalidate(HWND hwnd) {
 }
 
 // dispatch window messages to the right wndproc
-LRESULT CALLBACK gdi_hook_t::dispatch(HWND hwnd, uint32_t msg, WPARAM w,
+LRESULT CALLBACK gdi_hook_t::dispatch(HWND hwnd,
+                                      uint32_t msg,
+                                      WPARAM w,
                                       LPARAM l) {
 
   auto itt = procMap.find(hwnd);
@@ -83,14 +85,29 @@ LRESULT CALLBACK gdi_hook_t::dispatch(HWND hwnd, uint32_t msg, WPARAM w,
 
   gl_context_t *cxt = context.at(hwnd);
 
+  auto proc = itt->second;
+
   switch (msg) {
   case WM_PAINT:
     return redraw(*cxt);
+  case WM_KEYDOWN:
+    // check for special keys
+    switch (w) {
+    case VK_F12:  // screenshot
+      cxt->user_cmds.screenshot = true;
+      break;
+    case VK_F11:  // dump to obj
+      cxt->user_cmds.dmp_obj = true;
+      break;
+    case VK_F10:  // dump textures
+      cxt->user_cmds.dmp_textures = true;
+      break;
+    }
+    return CallWindowProcA(proc, hwnd, msg, w, l);
   default: {
     // note: Some window procs are not valid pointers but rather handles
     //       and must be called via a proxy function.  This is the case
     //       for unreal tournament 99.
-    auto proc = itt->second;
     return CallWindowProcA(proc, hwnd, msg, w, l);
   }
   }

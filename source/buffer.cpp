@@ -40,3 +40,8 @@ void buffer_manager_t::resize(int32_t w, int32_t h) {
     Context->raster.inst->framebuffer_aquire();
   }
 }
+
+void buffer_manager_t::save_bmp() {
+  // save a screenshot
+  ::save_bmp(pixels(), width(), height(), "screenshot.bmp");
+}

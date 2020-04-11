@@ -147,7 +147,7 @@ void draw_tri_depth(const frame_t &f,
         if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
 
           // depth test
-          if (w > depth[x]) {
+          if (w >= depth[x]) {
             depth[x] = w;
 
             const uint8_t r = 255; //  std::min(255, std::max(0, int32_t(w * 32 * 255)));
@@ -176,10 +176,15 @@ void draw_tri_depth(const frame_t &f,
     }
 }
 
+#pragma optimize( "g", on ) 
 // render using texture
 void draw_tri_tex_aprox(const frame_t &f,
                         const texture_t &tex,
                         const triangle_setup_t &s) {
+
+  if (tex._pixels[0] == nullptr) {
+    return;
+  }
 
   const uint32_t SW = triangle_setup_t::slot_iw;
   const uint32_t SU = triangle_setup_t::slot_u;
@@ -247,13 +252,268 @@ void draw_tri_tex_aprox(const frame_t &f,
         if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
 
           // depth test
-          if (w > depth[x]) {
+          if (w >= depth[x]) {
             depth[x] = w;
 
             const int32_t iu = (itu0 >> 15) & tex_mask_u;
             const int32_t iv = (itv0 >> 15) & tex_mask_v;
 
             dst[x] = texel[iu + (iv << tex_shift)];
+          }
+        }
+
+        // x axis coefficient step
+        v0_ += s.vx[0];
+        v1_ += s.vx[1];
+        iw_ += s.vx[SW];
+
+        // x axis interpolation step
+        itu0 += itudx;
+        itv0 += itvdx;
+      }
+
+      // x chunk step
+      u_ += sux * CHUNK_SIZE;
+      v_ += svx * CHUNK_SIZE;
+    }
+
+    // y axis coefficient step
+    v0 += s.vy[0];
+    v1 += s.vy[1];
+    iw += s.vy[SW];
+    u  += suy;
+    v  += svy;
+
+    // step the framebuffers
+    dst   += f._width;
+    depth += f._width;
+  }
+}
+
+static inline uint32_t blend(uint32_t src, uint32_t dst) {
+
+  const uint8_t palpha  = src >> 24;
+  const uint8_t ialpha = 255 - palpha;
+
+  uint32_t src1 = ((src & 0x00ff00ff) * palpha) & 0xff00ff00;
+  uint32_t src2 = ((src & 0x0000ff00) * palpha) & 0x00ff0000;
+
+  uint32_t dst1 = ((dst & 0x00ff00ff) * ialpha) & 0xff00ff00;
+  uint32_t dst2 = ((dst & 0x0000ff00) * ialpha) & 0x00ff0000;
+
+  return ((src1 | src2) + (dst1 | dst2)) >> 8;
+}
+
+// render using texture
+void draw_tri_tex_aprox_alpha(const frame_t &f,
+                              const texture_t &tex,
+                              const triangle_setup_t &s) {
+
+  if (tex._pixels[0] == nullptr) {
+    return;
+  }
+
+  const uint32_t SW = triangle_setup_t::slot_iw;
+  const uint32_t SU = triangle_setup_t::slot_u;
+  const uint32_t SV = triangle_setup_t::slot_v;
+
+  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
+  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
+
+  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
+
+  const uint32_t tex_w      = (tex._width  >> s.mip_level);
+  const uint32_t tex_h      = (tex._height >> s.mip_level);
+  const uint32_t tex_mask_u = tex_w - 1;
+  const uint32_t tex_mask_v = tex_h - 1;
+  const uint32_t tex_shift  = tex._wshift - s.mip_level;
+  const uint32_t *texel     = tex._pixels[s.mip_level];
+
+  const float sux = s.vx[SU] * tex_w;
+  const float svx = s.vx[SV] * tex_h;
+  const float suy = s.vy[SU] * tex_w;
+  const float svy = s.vy[SV] * tex_h;
+  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
+  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
+
+  const uint32_t fb_offset = s.bound.y0 * f._width;
+  uint32_t *dst            = f._pixels + fb_offset;
+  float    *depth          = f._depth  + fb_offset;
+
+  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
+
+    float v0_ = v0;
+    float v1_ = v1;
+    float iw_ = iw;
+    float u_  = u;
+    float v_  = v;
+
+    for (int x = s.bound.x0; x <= s.bound.x1;) {
+
+      static const int CHUNK_SIZE = 32;
+      const int x_chunk_end = std::min<int>(s.bound.x1, x + CHUNK_SIZE - 1);
+
+            float iw0  = iw_;
+      const float iw1  = iw_ + s.vx[SW] * CHUNK_SIZE;
+
+            float tu0  =  u_                     / iw0;
+      const float tu1  = (u_ + sux * CHUNK_SIZE) / iw1;
+      const float tudx = (tu1 - tu0) / CHUNK_SIZE;
+
+      int32_t itu0  = int32_t(tu0  * float(0x8000));
+      int32_t itudx = int32_t(tudx * float(0x8000));
+
+            float tv0  =  v_                     / iw0;
+      const float tv1  = (v_ + svx * CHUNK_SIZE) / iw1;
+      const float tvdx = (tv1 - tv0) / CHUNK_SIZE;
+
+      int32_t itv0  = int32_t(tv0  * float(0x8000));
+      int32_t itvdx = int32_t(tvdx * float(0x8000));
+
+      for (; x <= x_chunk_end ; ++x) {
+
+        const float w = iw_;
+
+        // triangle edge test
+        const float v2_ = 1.f - (v0_ + v1_);
+        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+
+          // depth test
+          if (w >= depth[x]) {
+            depth[x] = w;
+
+            const int32_t iu = (itu0 >> 15) & tex_mask_u;
+            const int32_t iv = (itv0 >> 15) & tex_mask_v;
+
+            const uint32_t s = texel[iu + (iv << tex_shift)];
+            const uint32_t d = dst[x];
+
+            dst[x] = blend(s, d);
+          }
+        }
+
+        // x axis coefficient step
+        v0_ += s.vx[0];
+        v1_ += s.vx[1];
+        iw_ += s.vx[SW];
+
+        // x axis interpolation step
+        itu0 += itudx;
+        itv0 += itvdx;
+      }
+
+      // x chunk step
+      u_ += sux * CHUNK_SIZE;
+      v_ += svx * CHUNK_SIZE;
+    }
+
+    // y axis coefficient step
+    v0 += s.vy[0];
+    v1 += s.vy[1];
+    iw += s.vy[SW];
+    u  += suy;
+    v  += svy;
+
+    // step the framebuffers
+    dst   += f._width;
+    depth += f._width;
+  }
+}
+
+static inline uint32_t blend2(uint32_t src, uint32_t dst) {
+
+  uint32_t r = 0x0000ff00 & (src & 0x0000ff) * ((dst >>  0) & 0xff);
+  uint32_t g = 0x00ff0000 & (src & 0x00ff00) * ((dst >>  8) & 0xff);
+  uint32_t b = 0xff000000 & (src & 0xff0000) * ((dst >> 16) & 0xff);
+
+  return (r | g | b) >> 8;
+}
+
+// render using texture
+void draw_tri_tex_aprox_lightmap(const frame_t &f,
+                                 const texture_t &tex,
+                                 const triangle_setup_t &s) {
+
+  if (tex._pixels[0] == nullptr) {
+    return;
+  }
+
+  const uint32_t SW = triangle_setup_t::slot_iw;
+  const uint32_t SU = triangle_setup_t::slot_u;
+  const uint32_t SV = triangle_setup_t::slot_v;
+
+  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
+  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
+
+  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
+
+  const uint32_t tex_w      = (tex._width  >> s.mip_level);
+  const uint32_t tex_h      = (tex._height >> s.mip_level);
+  const uint32_t tex_mask_u = tex_w - 1;
+  const uint32_t tex_mask_v = tex_h - 1;
+  const uint32_t tex_shift  = tex._wshift - s.mip_level;
+  const uint32_t *texel     = tex._pixels[s.mip_level];
+
+  const float sux = s.vx[SU] * tex_w;
+  const float svx = s.vx[SV] * tex_h;
+  const float suy = s.vy[SU] * tex_w;
+  const float svy = s.vy[SV] * tex_h;
+  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
+  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
+
+  const uint32_t fb_offset = s.bound.y0 * f._width;
+  uint32_t *dst            = f._pixels + fb_offset;
+  float    *depth          = f._depth  + fb_offset;
+
+  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
+
+    float v0_ = v0;
+    float v1_ = v1;
+    float iw_ = iw;
+    float u_  = u;
+    float v_  = v;
+
+    for (int x = s.bound.x0; x <= s.bound.x1;) {
+
+      static const int CHUNK_SIZE = 32;
+      const int x_chunk_end = std::min<int>(s.bound.x1, x + CHUNK_SIZE - 1);
+
+            float iw0  = iw_;
+      const float iw1  = iw_ + s.vx[SW] * CHUNK_SIZE;
+
+            float tu0  =  u_                     / iw0;
+      const float tu1  = (u_ + sux * CHUNK_SIZE) / iw1;
+      const float tudx = (tu1 - tu0) / CHUNK_SIZE;
+
+      int32_t itu0  = int32_t(tu0  * float(0x8000));
+      int32_t itudx = int32_t(tudx * float(0x8000));
+
+            float tv0  =  v_                     / iw0;
+      const float tv1  = (v_ + svx * CHUNK_SIZE) / iw1;
+      const float tvdx = (tv1 - tv0) / CHUNK_SIZE;
+
+      int32_t itv0  = int32_t(tv0  * float(0x8000));
+      int32_t itvdx = int32_t(tvdx * float(0x8000));
+
+      for (; x <= x_chunk_end ; ++x) {
+
+        const float w = iw_;
+
+        // triangle edge test
+        const float v2_ = 1.f - (v0_ + v1_);
+        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+
+          // depth test
+          if (w >= depth[x]) {
+            depth[x] = w;
+
+            const int32_t iu = (itu0 >> 15) & tex_mask_u;
+            const int32_t iv = (itv0 >> 15) & tex_mask_v;
+
+            const uint32_t s = texel[iu + (iv << tex_shift)];
+            const uint32_t d = dst[x];
+
+            dst[x] = blend2(s, d);
           }
         }
 
@@ -335,7 +595,7 @@ void draw_tri_tex(const frame_t &f,
       if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
 
         // depth test
-        if (w > depth[x]) {
+        if (w >= depth[x]) {
           depth[x] = w;
 
           const int32_t iu = int32_t(u_ / iw_) & tex_mask_u;
@@ -365,6 +625,8 @@ void draw_tri_tex(const frame_t &f,
     depth += f._width;
   }
 }
+// reset optimizations
+#pragma optimize( "", on )
 
 void drawTri(const frame_t &frame,
              const triangle_t &t) {
@@ -379,9 +641,6 @@ void drawTri(const frame_t &frame,
   // the signed triangle area
   const float area =
       1.f / ((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y));
-  if (area <= 0.f) {
-//    return;
-  }
 
   // Triangle setup
   const float sx01 = (v0.y - v1.y) * area;
@@ -475,10 +734,6 @@ void drawTriUV(const frame_t &frame,
   const float rarea = 1.f / area;
   if (area == 0.f) {
     return;
-  }
-  if (area <= 0.f) {
-    // if its backfacing then discard it?
-//    return;
   }
 
   // the signed area of the UVs (texel space)
@@ -749,9 +1004,6 @@ void drawTriARGB(const frame_t &frame,
   const float area =
       1.f / ((v1.x - v0.x) * (v2.y - v0.y) -
              (v2.x - v0.x) * (v1.y - v0.y));
-  if (area <= 0.f) {
-//    return;
-  }
 
   // Triangle setup
   const float sx01 = (v0.y - v1.y) * area;
@@ -804,7 +1056,7 @@ void drawTriARGB(const frame_t &frame,
     for (int32_t x = rect.x0; x <= rect.x1; x++) {
 
       // If p is on or inside all edges, render pixel.
-      if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
+      if (w0x >= 0.f && w1x >= 0.f && w2x >= 0.f) {
 
         // depth test
         if (hw > zbf[x]) {
@@ -861,7 +1113,7 @@ struct rast_reference_t : public raster_t {
         _cxt->buffer.clear_colour(0x202020);
       }
       if (depth) {
-        _cxt->buffer.clear_depth(0.f);
+        _cxt->buffer.clear_depth(-100.f);
       }
     }
   }
@@ -907,31 +1159,25 @@ struct rast_reference_t : public raster_t {
         continue;
       }
 
-#if 0
       if (state.blendFrag) {
-#if 1
-        if (state.blendFuncDst != GL_ZERO && state.blendFuncSrc != GL_ONE) {
-          return;
+        if (state.blendFuncDst == GL_SRC_COLOR && state.blendFuncSrc == GL_DST_COLOR) {
+//          draw_tri_tex_aprox_lightmap(_frame, *tex, setup);
         }
-#else
+        if (state.blendFuncDst == GL_ONE_MINUS_SRC_ALPHA && state.blendFuncSrc == GL_SRC_ALPHA) {
+//          draw_tri_tex_aprox_alpha(_frame, *tex, setup);
+        }
         if (state.blendFuncDst == GL_ZERO && state.blendFuncSrc == GL_ONE) {
-          return;
+          draw_tri_tex_aprox(_frame, *tex, setup);
         }
-#endif
-      }
-#endif
-
-#if 1
-//      draw_tri_depth(_frame, *tex, setup);
-      draw_tri_tex_aprox(_frame, *tex, setup);
-#else
-      if (tex) {
-        drawTriUV2(_frame, *tex, t);
       }
       else {
-        drawTriARGB(_frame, *tex, t);
+        if (tex && tex->_pixels[0]) {
+          draw_tri_tex_aprox(_frame, *tex, setup);
+        }
+        else {
+          // ?
+        }
       }
-#endif
     }
   }
 
@@ -978,13 +1224,8 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
   // find the area of the triangle
   const float area = triangle_area(v0, v1, v2);
 
-  // remove backfaces
-  if (area > 0) {
-    return false;
-  }
-
   // the signed area of the UVs (texel space)
-  {
+  if (_tex) {
     const float2 &t0 = t.vert[0].tex;
     const float2 &t1 = t.vert[1].tex;
     const float2 &t2 = t.vert[2].tex;
@@ -1023,6 +1264,8 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
 
   // XXX: make this float3 and use dot products
   std::array<float, 9> c;
+
+  const auto & state = _cxt->state;
 
   // 1/w interpolation
   {

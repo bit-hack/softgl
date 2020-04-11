@@ -36,6 +36,7 @@ void gl_context_t::on_flush() {
   if (!primative.triangles().empty()) {
     primative.clip_triangles();
     primative.convert_to_dc();
+    primative.cull_triangles();
     if (profile) {
       profile->on_triangles(primative.triangles());
     }

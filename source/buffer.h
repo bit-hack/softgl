@@ -42,6 +42,8 @@ struct buffer_manager_t {
     }
   }
 
+  void save_bmp();
+
 protected:
   void _release();
 

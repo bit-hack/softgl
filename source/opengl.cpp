@@ -462,6 +462,10 @@ void __stdcall glDepthMask(GLboolean flag) {
 void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
   TRACE();
   //
+  if (gl_context_t *cxt = Context) {
+    cxt->state.depthRangeNear = clamp<float>(0.f, (float)zNear, 1.f);
+    cxt->state.depthRangeFar  = clamp<float>(0.f, (float)zFar,  1.f);
+  }
 }
 
 void __stdcall glDisable(GLenum cap) {
@@ -477,9 +481,6 @@ void __stdcall glDisable(GLenum cap) {
     case GL_BLEND:               state.blendFrag       = false; break;
     case GL_SCISSOR_TEST:        state.testScissor     = false; break;
     case GL_STENCIL_TEST:        state.testStencil     = false; break;
-    case GL_COLOR_ARRAY:         state.array_color     = false; break;
-    case GL_VERTEX_ARRAY:        state.array_vertex    = false; break;
-    case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = false; break;
     default:
       break;
     }
@@ -487,9 +488,15 @@ void __stdcall glDisable(GLenum cap) {
 }
 
 void __stdcall glDisableClientState(GLenum array) {
-  TRACE();
-  //
-//  DEBUG_BREAK; // UT2003
+  TRACE_FMT("%s(0x%08x)\n", __func__, (int)array);
+  if (gl_context_t *cxt = Context) {
+    auto &state = cxt->state;
+    switch (array) {
+    case GL_COLOR_ARRAY:         state.array_color     = false; break;
+    case GL_VERTEX_ARRAY:        state.array_vertex    = false; break;
+    case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = false; break;
+    }
+  }
 }
 
 void __stdcall glDrawArrays(GLenum mode, GLint first, GLsizei count) {
@@ -562,9 +569,6 @@ void __stdcall glEnable(GLenum cap) {
     case GL_BLEND:        state.blendFrag              = true; break;
     case GL_SCISSOR_TEST: state.testScissor            = true; break;
     case GL_STENCIL_TEST: state.testStencil            = true; break;
-    case GL_COLOR_ARRAY:  state.array_color            = true; break;
-    case GL_VERTEX_ARRAY: state.array_vertex           = true; break;
-    case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = true; break;
     default:
       break;
     }
@@ -573,7 +577,14 @@ void __stdcall glEnable(GLenum cap) {
 
 void __stdcall glEnableClientState(GLenum array) {
   TRACE_FMT("%s(0x%08x)\n", __func__, (int)array);
-  //
+  if (gl_context_t *cxt = Context) {
+    auto &state = cxt->state;
+    switch (array) {
+    case GL_COLOR_ARRAY:         state.array_color     = true; break;
+    case GL_VERTEX_ARRAY:        state.array_vertex    = true; break;
+    case GL_TEXTURE_COORD_ARRAY: state.array_tex_coord = true; break;
+    }
+  }
 }
 
 void __stdcall glEnd(void) {
@@ -714,12 +725,20 @@ void __stdcall glFogiv(GLenum pname, const GLint *params) {
 
 void __stdcall glFrontFace(GLenum mode) {
   TRACE();
-  switch (mode) {
-  case GL_CW:
-    // as we expect
-    break;
-  case GL_CCW:
-    DEBUG_BREAK;
+  if (gl_context_t *cxt = Context) {
+    switch (mode) {
+    case GL_CW:
+      // alternate winding for opengl
+      cxt->state.frontFace = mode;
+      break;
+    case GL_CCW:
+      // default for OpenGL
+      cxt->state.frontFace = mode;
+      break;
+    default:
+      DEBUG_BREAK;
+      break;
+    }
   }
 }
 
@@ -1083,9 +1102,17 @@ void __stdcall glInterleavedArrays(GLenum format, GLsizei stride,
 }
 
 GLboolean __stdcall glIsEnabled(GLenum cap) {
-  TRACE();
-  //
+  TRACE_FMT("%s(0x%08x)\n", __func__, (int)cap);
   DEBUG_BREAK;
+
+  if (gl_context_t *cxt = Context) {
+    auto &state = cxt->state;
+    switch (cap) {
+    case GL_COLOR_ARRAY:         return state.array_color;
+    case GL_VERTEX_ARRAY:        return state.array_vertex;
+    case GL_TEXTURE_COORD_ARRAY: return state.array_tex_coord;
+    }
+  }
   return GL_FALSE;
 }
 
@@ -2051,7 +2078,7 @@ void __stdcall glTexGenf(GLenum coord, GLenum pname, GLfloat param) {
 void __stdcall glTexGenfv(GLenum coord, GLenum pname, const GLfloat *params) {
   TRACE();
   //
-  DEBUG_BREAK;
+//  DEBUG_BREAK; // UT2003
 }
 
 void __stdcall glTexGeni(GLenum coord, GLenum pname, GLint param) {
