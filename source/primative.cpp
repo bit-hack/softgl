@@ -310,14 +310,16 @@ void primative_manager_t::cull_triangles() {
 
 void primative_manager_t::convert_to_dc() {
 
-  auto &viewport = Context->state.viewport;
+  const auto &state = Context->state;
+
+  auto &viewport = state.viewport;
   // get viewport center offset
   const float vx = viewport.x0;
   const float vy = viewport.y0;
   const float vw = viewport.dx() * .5f;
   const float vh = viewport.dy() * .5f;
 
-  auto transform = [vx, vy, vw, vh](float4 &v) {
+  auto transform = [vx, vy, vw, vh, &state](float4 &v) {
     // homogenous perspective divide
     v.x /= v.w;
     v.y /= v.w;
@@ -326,6 +328,8 @@ void primative_manager_t::convert_to_dc() {
     // ndc -> dc coordinate
     v.x = vx + (v.x * vw + vw);
     v.y = vy + (v.y * vh + vh);
+    // depth range
+    v.z = state.depthRangeNear + (state.depthRangeFar - state.depthRangeNear) * v.z;
   };
 
   for (auto &t : _triangles) {

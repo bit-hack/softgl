@@ -468,6 +468,7 @@ void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
   TRACE();
   //
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     cxt->state.depthRangeNear = clamp<float>(0.f, (float)zNear, 1.f);
     cxt->state.depthRangeFar  = clamp<float>(0.f, (float)zFar,  1.f);
   }
@@ -695,9 +696,6 @@ void __stdcall glFinish(void) {
 
 void __stdcall glFlush(void) {
   TRACE();
-#ifndef NDEBUG
-  Sleep(5);
-#endif
   //
   if (gl_context_t *cxt = Context) {
     cxt->on_flush();
@@ -731,6 +729,7 @@ void __stdcall glFogiv(GLenum pname, const GLint *params) {
 void __stdcall glFrontFace(GLenum mode) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     switch (mode) {
     case GL_CW:
       // alternate winding for opengl

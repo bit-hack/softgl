@@ -63,6 +63,10 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
     }
   }
 
+#ifndef NDEBUG
+  Sleep(5);
+#endif
+
   return TRUE;
 }
 
