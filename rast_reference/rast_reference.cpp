@@ -10,8 +10,6 @@
 #include "../source/raster.h"
 #include "../source/texture.h"
 
-namespace {
-
 struct triangle_setup_t {
 
   enum {
@@ -44,28 +42,6 @@ struct frame_t {
   int32_t _height;
 };
 
-constexpr float edgeEval(const float4 &a, const float4 &b, const float2 &c) {
-  return ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
-}
-
-recti_t triangle_bound(const frame_t &frame,
-                       const float4 &v0,
-                       const float4 &v1,
-                       const float4 &v2) {
-  recti_t out;
-  // Compute triangle bounding box
-  out.x0 = std::min({int32_t(v0.x), int32_t(v1.x), int32_t(v2.x)});
-  out.y0 = std::min({int32_t(v0.y), int32_t(v1.y), int32_t(v2.y)});
-  out.x1 = std::max({int32_t(v0.x), int32_t(v1.x), int32_t(v2.x)});
-  out.y1 = std::max({int32_t(v0.y), int32_t(v1.y), int32_t(v2.y)});
-  // Clip against screen bounds
-  out.x0 = std::max(out.x0, 0);
-  out.y0 = std::max(out.y0, 0);
-  out.x1 = std::min(out.x1, frame._width - 1);
-  out.y1 = std::min(out.y1, frame._height - 1);
-  return out;
-}
-
 // ~log3.75 (should be log4 but this looks nice)
 static const std::array<uint8_t, 128> mip_log_table = {
     0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -76,20 +52,15 @@ static const std::array<uint8_t, 128> mip_log_table = {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
 };
 
-uint32_t get_mip_level(float tri_area, float uv_area) {
+static inline uint32_t get_mip_level(float tri_area,
+                                     float uv_area) {
   const float factor = abs(uv_area * 0.99f) / abs(tri_area);
   uint32_t ifactor = uint32_t(factor);
-#if 1
   return mip_log_table[
     std::min(ifactor, mip_log_table.size() - 1)];
-#else
-  // note: / 2 because the each mip level is 4x information
-  uint32_t level = (32 - __lzcnt(ifactor));
-  return std::min<uint32_t>(level, texture_t::mip_levels - 1);
-#endif
 }
 
-inline float triangle_area(const float2 &v0,
+static inline float triangle_area(const float2 &v0,
                            const float2 &v1,
                            const float2 &v2) {
 
@@ -114,12 +85,10 @@ inline float triangle_area(const float2 &v0,
 //  normal:   the normal for that edge
 //  poe:      a point on the edge
 //  point:    the location where to sample it
-inline float evaluate(const float2 &normal,
-                      const float2 &poe) {
+static inline float evaluate(const float2 &normal,
+                             const float2 &poe) {
   return normal.x * poe.x + normal.y * poe.y;
 }
-
-} // namespace
 
 static inline __m128 step_x(float v, float vx) {
   return _mm_set_ps(v + vx * 3.f,
@@ -131,12 +100,13 @@ static inline __m128 step_x(float v, float vx) {
 static const int32_t BLOCK_SIZE = 16;
 static const int32_t BLOCK_MASK = ~(BLOCK_SIZE - 1);
 
-inline void draw_wi_depth(const triangle_setup_t &s,
-                          const texture_t &,
-                          const float2 origin,
-                          uint32_t *color,
-                          float *depth,
-                          uint32_t pitch) {
+static inline void draw_wi_depth(
+  const triangle_setup_t &s,
+  const texture_t &,
+  const float2 origin,
+  uint32_t *color,
+  float *depth,
+  uint32_t pitch) {
 
   float v0 = (s.vx[s.slot_w0] * origin.x + s.vy[s.slot_w0] * origin.y) - s.v[s.slot_w0];
   float v1 = (s.vx[s.slot_w1] * origin.x + s.vy[s.slot_w1] * origin.y) - s.v[s.slot_w1];
@@ -191,12 +161,13 @@ inline void draw_wi_depth(const triangle_setup_t &s,
   }
 }
 
-inline void draw_wi_depth_sse(const triangle_setup_t &s,
-                              const texture_t &,
-                              const float2 origin,
-                              uint32_t *color,
-                              float *depth,
-                              uint32_t pitch) {
+static inline void draw_wi_depth_sse(
+  const triangle_setup_t &s,
+  const texture_t &,
+  const float2 origin,
+  uint32_t *color,
+  float *depth,
+  uint32_t pitch) {
 
   const float v0 = (s.vx[s.slot_w0] * origin.x + s.vy[s.slot_w0] * origin.y) - s.v[s.slot_w0];
   const float v1 = (s.vx[s.slot_w1] * origin.x + s.vy[s.slot_w1] * origin.y) - s.v[s.slot_w1];
@@ -277,12 +248,13 @@ inline void draw_wi_depth_sse(const triangle_setup_t &s,
   }
 }
 
-inline void draw_wi_texture(const triangle_setup_t &s,
-                            const texture_t &tex,
-                            const float2 origin,
-                            uint32_t *color,
-                            float *depth,
-                            uint32_t pitch) {
+static inline void draw_wi_texture(
+  const triangle_setup_t &s,
+  const texture_t &tex,
+  const float2 origin,
+  uint32_t *color,
+  float *depth,
+  uint32_t pitch) {
 
   const float v0 = (s.vx[s.slot_w0] * origin.x + s.vy[s.slot_w0] * origin.y) - s.v[s.slot_w0];
   const float v1 = (s.vx[s.slot_w1] * origin.x + s.vy[s.slot_w1] * origin.y) - s.v[s.slot_w1];
@@ -408,12 +380,13 @@ inline void draw_wi_texture(const triangle_setup_t &s,
 }
 
 // trivial in case
-inline void draw_wi_texture_ti(const triangle_setup_t &s,
-                               const texture_t &tex,
-                               const float2 origin,
-                               uint32_t *color,
-                               float *depth,
-                               uint32_t pitch) {
+static inline void draw_wi_texture_ti(
+  const triangle_setup_t &s,
+  const texture_t &tex,
+  const float2 origin,
+  uint32_t *color,
+  float *depth,
+  uint32_t pitch) {
 
   const float iw = (s.vx[s.slot_iw] * origin.x + s.vy[s.slot_iw] * origin.y) - s.v[s.slot_iw];
   const float z  = (s.vx[s.slot_z ] * origin.x + s.vy[s.slot_z ] * origin.y) - s.v[s.slot_z ];
@@ -560,7 +533,9 @@ typedef void(*raster_func_t)(const triangle_setup_t &,
 
 // render depth
 template <raster_func_t func, raster_func_t func_ti>
-void draw_wg(const frame_t &f, const triangle_setup_t &s, const texture_t &tex) {
+static void draw_wg(const frame_t &f,
+                    const triangle_setup_t &s,
+                    const texture_t &tex) {
   const recti_t rect = { s.bound.x0                   & BLOCK_MASK,
                          s.bound.y0                   & BLOCK_MASK,
                         (s.bound.x1 + BLOCK_SIZE - 1) & BLOCK_MASK,
