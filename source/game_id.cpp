@@ -85,10 +85,10 @@ game_id_t getGameId()
   case 0xf45771674923d6a5:  // yquake2  (quake2-20200324-9acb99e.zip)
     game_id = e_quake_2;
     break;
-  case 0x2365c561bb63848e:
+  case 0x2365c561bb63848e:  // steam version
     game_id = e_ut99_goty;
     break;
-  case 0x58908a8fe82c5ad4:
+  case 0x58908a8fe82c5ad4:  // quake 3 demo
     game_id = e_quake_3;
     break;
   case 0xc388218ae8925ad4:

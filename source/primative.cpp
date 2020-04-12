@@ -322,6 +322,7 @@ void primative_manager_t::convert_to_dc() {
     v.x /= v.w;
     v.y /= v.w;
     v.z /= v.w;
+    v.w  = 1.f / v.w;
     // ndc -> dc coordinate
     v.x = vx + (v.x * vw + vw);
     v.y = vy + (v.y * vh + vh);

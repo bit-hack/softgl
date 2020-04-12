@@ -103,7 +103,12 @@ void __stdcall glClear(GLbitfield mask) {
 
     if (cxt->raster.inst) {
       cxt->raster.inst->framebuffer_clear(
-        color, depth, stencil, 0x202020, 1000.f, 0);
+        color,
+        depth,
+        stencil,
+        cxt->state.clearColor,
+        1.f,
+        0);
     }
   }
 }

@@ -48,7 +48,7 @@ void texture_manager_t::glTexImage2D(GLenum target, GLint level,
                                      const GLvoid *pixels) {
 
   if (!isPowerOfTwo(width) || !isPowerOfTwo(height)) {
-    DEBUG_BREAK;
+//    DEBUG_BREAK;
   }
   if (std::max(width, height) >= texture_t::max_size) {
     DEBUG_BREAK;

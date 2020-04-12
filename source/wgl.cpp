@@ -58,9 +58,9 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   switch (getGameId()) {
   case e_ut99_goty:
   case e_half_life_of_demo:
-    // XXX: we force a clear here until we have proper depth buffer control
-    Context->buffer.clear_colour(0x202020);
-    Context->buffer.clear_depth(-100.f);
+    if (Context->raster.inst) {
+      Context->raster.inst->framebuffer_clear(false, true, false, 0x202020, 10000.f, 0);
+    }
   }
 
   return TRUE;

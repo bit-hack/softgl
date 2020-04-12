@@ -18,6 +18,7 @@ struct triangle_setup_t {
     slot_w0,  // triangle weight 0
     slot_w1,  // triangle weight 1
     slot_iw,  // inverse w
+    slot_z,   // z / w
     slot_r,   // r / w
     slot_g,   // g / w
     slot_b,   // b / w
@@ -29,6 +30,8 @@ struct triangle_setup_t {
   std::array<float, _slot_count_> v;
   std::array<float, _slot_count_> vx;
   std::array<float, _slot_count_> vy;
+
+  std::array<float3, 3> edge;
 
   recti_t bound;
   uint32_t mip_level;
@@ -111,985 +114,482 @@ inline float triangle_area(const float2 &v0,
 //  normal:   the normal for that edge
 //  poe:      a point on the edge
 //  point:    the location where to sample it
-inline float evaluate(const float2 &normal, const float2 &poe) {
-
+inline float evaluate(const float2 &normal,
+                      const float2 &poe) {
   return normal.x * poe.x + normal.y * poe.y;
 }
 
 } // namespace
 
-// render depth
-void draw_tri_depth(const frame_t &f,
-                    const texture_t &tex,
-                    const triangle_setup_t &s) {
-
-    float v0 = (s.vx[0] * s.bound.x0 + s.vy[0] * s.bound.y0) - s.v[0];
-    float v1 = (s.vx[1] * s.bound.x0 + s.vy[1] * s.bound.y0) - s.v[1];
-    float iw = (s.vx[2] * s.bound.x0 + s.vy[2] * s.bound.y0) - s.v[2];
-
-    uint32_t fb_offset = s.bound.y0 * f._width;
-    uint32_t *dst      = f._pixels + fb_offset;
-    float    *depth    = f._depth + fb_offset;
-
-    for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
-
-      float v0_ = v0;
-      float v1_ = v1;
-      float iw_ = iw;
-
-      for (int x = s.bound.x0; x <= s.bound.x1; ++x) {
-
-        const float v2_ = 1.f - (v0_ + v1_);
-
-        const float w = iw_;
-
-        // triangle edge test
-        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
-
-          // depth test
-          if (w >= depth[x]) {
-            depth[x] = w;
-
-            const uint8_t r = 255; //  std::min(255, std::max(0, int32_t(w * 32 * 255)));
-            const uint8_t g = r;
-            const uint8_t b = r;
-
-            dst[x] = (r << 16) | (g << 8) | b;
-          }
-
-        }
-
-        // x axis coefficient step
-        v0_ += s.vx[0];
-        v1_ += s.vx[1];
-        iw_ += s.vx[2];
-      }
-
-      // y axis coefficient step
-      v0 += s.vy[0];
-      v1 += s.vy[1];
-      iw += s.vy[2];
-
-      // step the framebuffers
-      dst   += f._width;
-      depth += f._width;
-    }
+static inline __m128 step_x(float v, float vx) {
+  return _mm_set_ps(v + vx * 3.f,
+                    v + vx * 2.f,
+                    v + vx * 1.f,
+                    v + vx * 0.f);
 }
 
-#pragma optimize( "g", on ) 
-// render using texture
-void draw_tri_tex_aprox(const frame_t &f,
-                        const texture_t &tex,
-                        const triangle_setup_t &s) {
+static const int32_t BLOCK_SIZE = 16;
+static const int32_t BLOCK_MASK = ~(BLOCK_SIZE - 1);
 
-  if (tex._pixels[0] == nullptr) {
-    return;
-  }
+inline void draw_wi_depth(const triangle_setup_t &s,
+                          const texture_t &,
+                          const float2 origin,
+                          uint32_t *color,
+                          float *depth,
+                          uint32_t pitch) {
 
-  const uint32_t SW = triangle_setup_t::slot_iw;
-  const uint32_t SU = triangle_setup_t::slot_u;
-  const uint32_t SV = triangle_setup_t::slot_v;
+  float v0 = (s.vx[s.slot_w0] * origin.x + s.vy[s.slot_w0] * origin.y) - s.v[s.slot_w0];
+  float v1 = (s.vx[s.slot_w1] * origin.x + s.vy[s.slot_w1] * origin.y) - s.v[s.slot_w1];
+  float iw = (s.vx[s.slot_iw] * origin.x + s.vy[s.slot_iw] * origin.y) - s.v[s.slot_iw];
+  float z  = (s.vx[s.slot_z ] * origin.x + s.vy[s.slot_z ] * origin.y) - s.v[s.slot_z ];
 
-  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
-  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
-
-  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
-
-  const uint32_t tex_w      = (tex._width  >> s.mip_level);
-  const uint32_t tex_h      = (tex._height >> s.mip_level);
-  const uint32_t tex_mask_u = tex_w - 1;
-  const uint32_t tex_mask_v = tex_h - 1;
-  const uint32_t tex_shift  = tex._wshift - s.mip_level;
-  const uint32_t *texel     = tex._pixels[s.mip_level];
-
-  const float sux = s.vx[SU] * tex_w;
-  const float svx = s.vx[SV] * tex_h;
-  const float suy = s.vy[SU] * tex_w;
-  const float svy = s.vy[SV] * tex_h;
-  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
-  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
-
-  const uint32_t fb_offset = s.bound.y0 * f._width;
-  uint32_t *dst            = f._pixels + fb_offset;
-  float    *depth          = f._depth  + fb_offset;
-
-  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
+  for (int y = 0; y < BLOCK_SIZE; ++y) {
 
     float v0_ = v0;
     float v1_ = v1;
     float iw_ = iw;
-    float u_  = u;
-    float v_  = v;
+    float z_  = z;
 
-    for (int x = s.bound.x0; x <= s.bound.x1;) {
+    for (int x = 0; x < BLOCK_SIZE; ++x) {
 
-      static const int CHUNK_SIZE = 32;
-      const int x_chunk_end = std::min<int>(s.bound.x1, x + CHUNK_SIZE - 1);
-
-            float iw0  = iw_;
-      const float iw1  = iw_ + s.vx[SW] * CHUNK_SIZE;
-
-            float tu0  =  u_                     / iw0;
-      const float tu1  = (u_ + sux * CHUNK_SIZE) / iw1;
-      const float tudx = (tu1 - tu0) / CHUNK_SIZE;
-
-      int32_t itu0  = int32_t(tu0  * float(0x8000));
-      int32_t itudx = int32_t(tudx * float(0x8000));
-
-            float tv0  =  v_                     / iw0;
-      const float tv1  = (v_ + svx * CHUNK_SIZE) / iw1;
-      const float tvdx = (tv1 - tv0) / CHUNK_SIZE;
-
-      int32_t itv0  = int32_t(tv0  * float(0x8000));
-      int32_t itvdx = int32_t(tvdx * float(0x8000));
-
-      for (; x <= x_chunk_end ; ++x) {
-
-        const float w = iw_;
-
-        // triangle edge test
-        const float v2_ = 1.f - (v0_ + v1_);
-        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
-
-          // depth test
-          if (w >= depth[x]) {
-            depth[x] = w;
-
-            const int32_t iu = (itu0 >> 15) & tex_mask_u;
-            const int32_t iv = (itv0 >> 15) & tex_mask_v;
-
-            dst[x] = texel[iu + (iv << tex_shift)];
-          }
-        }
-
-        // x axis coefficient step
-        v0_ += s.vx[0];
-        v1_ += s.vx[1];
-        iw_ += s.vx[SW];
-
-        // x axis interpolation step
-        itu0 += itudx;
-        itv0 += itvdx;
-      }
-
-      // x chunk step
-      u_ += sux * CHUNK_SIZE;
-      v_ += svx * CHUNK_SIZE;
-    }
-
-    // y axis coefficient step
-    v0 += s.vy[0];
-    v1 += s.vy[1];
-    iw += s.vy[SW];
-    u  += suy;
-    v  += svy;
-
-    // step the framebuffers
-    dst   += f._width;
-    depth += f._width;
-  }
-}
-
-static inline uint32_t blend(uint32_t src, uint32_t dst) {
-
-  const uint8_t palpha  = src >> 24;
-  const uint8_t ialpha = 255 - palpha;
-
-  uint32_t src1 = ((src & 0x00ff00ff) * palpha) & 0xff00ff00;
-  uint32_t src2 = ((src & 0x0000ff00) * palpha) & 0x00ff0000;
-
-  uint32_t dst1 = ((dst & 0x00ff00ff) * ialpha) & 0xff00ff00;
-  uint32_t dst2 = ((dst & 0x0000ff00) * ialpha) & 0x00ff0000;
-
-  return ((src1 | src2) + (dst1 | dst2)) >> 8;
-}
-
-// render using texture
-void draw_tri_tex_aprox_alpha(const frame_t &f,
-                              const texture_t &tex,
-                              const triangle_setup_t &s) {
-
-  if (tex._pixels[0] == nullptr) {
-    return;
-  }
-
-  const uint32_t SW = triangle_setup_t::slot_iw;
-  const uint32_t SU = triangle_setup_t::slot_u;
-  const uint32_t SV = triangle_setup_t::slot_v;
-
-  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
-  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
-
-  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
-
-  const uint32_t tex_w      = (tex._width  >> s.mip_level);
-  const uint32_t tex_h      = (tex._height >> s.mip_level);
-  const uint32_t tex_mask_u = tex_w - 1;
-  const uint32_t tex_mask_v = tex_h - 1;
-  const uint32_t tex_shift  = tex._wshift - s.mip_level;
-  const uint32_t *texel     = tex._pixels[s.mip_level];
-
-  const float sux = s.vx[SU] * tex_w;
-  const float svx = s.vx[SV] * tex_h;
-  const float suy = s.vy[SU] * tex_w;
-  const float svy = s.vy[SV] * tex_h;
-  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
-  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
-
-  const uint32_t fb_offset = s.bound.y0 * f._width;
-  uint32_t *dst            = f._pixels + fb_offset;
-  float    *depth          = f._depth  + fb_offset;
-
-  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
-
-    float v0_ = v0;
-    float v1_ = v1;
-    float iw_ = iw;
-    float u_  = u;
-    float v_  = v;
-
-    for (int x = s.bound.x0; x <= s.bound.x1;) {
-
-      static const int CHUNK_SIZE = 32;
-      const int x_chunk_end = std::min<int>(s.bound.x1, x + CHUNK_SIZE - 1);
-
-            float iw0  = iw_;
-      const float iw1  = iw_ + s.vx[SW] * CHUNK_SIZE;
-
-            float tu0  =  u_                     / iw0;
-      const float tu1  = (u_ + sux * CHUNK_SIZE) / iw1;
-      const float tudx = (tu1 - tu0) / CHUNK_SIZE;
-
-      int32_t itu0  = int32_t(tu0  * float(0x8000));
-      int32_t itudx = int32_t(tudx * float(0x8000));
-
-            float tv0  =  v_                     / iw0;
-      const float tv1  = (v_ + svx * CHUNK_SIZE) / iw1;
-      const float tvdx = (tv1 - tv0) / CHUNK_SIZE;
-
-      int32_t itv0  = int32_t(tv0  * float(0x8000));
-      int32_t itvdx = int32_t(tvdx * float(0x8000));
-
-      for (; x <= x_chunk_end ; ++x) {
-
-        const float w = iw_;
-
-        // triangle edge test
-        const float v2_ = 1.f - (v0_ + v1_);
-        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
-
-          // depth test
-          if (w >= depth[x]) {
-            depth[x] = w;
-
-            const int32_t iu = (itu0 >> 15) & tex_mask_u;
-            const int32_t iv = (itv0 >> 15) & tex_mask_v;
-
-            const uint32_t s = texel[iu + (iv << tex_shift)];
-            const uint32_t d = dst[x];
-
-            dst[x] = blend(s, d);
-          }
-        }
-
-        // x axis coefficient step
-        v0_ += s.vx[0];
-        v1_ += s.vx[1];
-        iw_ += s.vx[SW];
-
-        // x axis interpolation step
-        itu0 += itudx;
-        itv0 += itvdx;
-      }
-
-      // x chunk step
-      u_ += sux * CHUNK_SIZE;
-      v_ += svx * CHUNK_SIZE;
-    }
-
-    // y axis coefficient step
-    v0 += s.vy[0];
-    v1 += s.vy[1];
-    iw += s.vy[SW];
-    u  += suy;
-    v  += svy;
-
-    // step the framebuffers
-    dst   += f._width;
-    depth += f._width;
-  }
-}
-
-static inline uint32_t blend2(uint32_t src, uint32_t dst) {
-
-  uint32_t r = 0x0000ff00 & (src & 0x0000ff) * ((dst >>  0) & 0xff);
-  uint32_t g = 0x00ff0000 & (src & 0x00ff00) * ((dst >>  8) & 0xff);
-  uint32_t b = 0xff000000 & (src & 0xff0000) * ((dst >> 16) & 0xff);
-
-  return (r | g | b) >> 8;
-}
-
-// render using texture
-void draw_tri_tex_aprox_lightmap(const frame_t &f,
-                                 const texture_t &tex,
-                                 const triangle_setup_t &s) {
-
-  if (tex._pixels[0] == nullptr) {
-    return;
-  }
-
-  const uint32_t SW = triangle_setup_t::slot_iw;
-  const uint32_t SU = triangle_setup_t::slot_u;
-  const uint32_t SV = triangle_setup_t::slot_v;
-
-  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
-  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
-
-  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
-
-  const uint32_t tex_w      = (tex._width  >> s.mip_level);
-  const uint32_t tex_h      = (tex._height >> s.mip_level);
-  const uint32_t tex_mask_u = tex_w - 1;
-  const uint32_t tex_mask_v = tex_h - 1;
-  const uint32_t tex_shift  = tex._wshift - s.mip_level;
-  const uint32_t *texel     = tex._pixels[s.mip_level];
-
-  const float sux = s.vx[SU] * tex_w;
-  const float svx = s.vx[SV] * tex_h;
-  const float suy = s.vy[SU] * tex_w;
-  const float svy = s.vy[SV] * tex_h;
-  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
-  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
-
-  const uint32_t fb_offset = s.bound.y0 * f._width;
-  uint32_t *dst            = f._pixels + fb_offset;
-  float    *depth          = f._depth  + fb_offset;
-
-  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
-
-    float v0_ = v0;
-    float v1_ = v1;
-    float iw_ = iw;
-    float u_  = u;
-    float v_  = v;
-
-    for (int x = s.bound.x0; x <= s.bound.x1;) {
-
-      static const int CHUNK_SIZE = 32;
-      const int x_chunk_end = std::min<int>(s.bound.x1, x + CHUNK_SIZE - 1);
-
-            float iw0  = iw_;
-      const float iw1  = iw_ + s.vx[SW] * CHUNK_SIZE;
-
-            float tu0  =  u_                     / iw0;
-      const float tu1  = (u_ + sux * CHUNK_SIZE) / iw1;
-      const float tudx = (tu1 - tu0) / CHUNK_SIZE;
-
-      int32_t itu0  = int32_t(tu0  * float(0x8000));
-      int32_t itudx = int32_t(tudx * float(0x8000));
-
-            float tv0  =  v_                     / iw0;
-      const float tv1  = (v_ + svx * CHUNK_SIZE) / iw1;
-      const float tvdx = (tv1 - tv0) / CHUNK_SIZE;
-
-      int32_t itv0  = int32_t(tv0  * float(0x8000));
-      int32_t itvdx = int32_t(tvdx * float(0x8000));
-
-      for (; x <= x_chunk_end ; ++x) {
-
-        const float w = iw_;
-
-        // triangle edge test
-        const float v2_ = 1.f - (v0_ + v1_);
-        if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
-
-          // depth test
-          if (w >= depth[x]) {
-            depth[x] = w;
-
-            const int32_t iu = (itu0 >> 15) & tex_mask_u;
-            const int32_t iv = (itv0 >> 15) & tex_mask_v;
-
-            const uint32_t s = texel[iu + (iv << tex_shift)];
-            const uint32_t d = dst[x];
-
-            dst[x] = blend2(s, d);
-          }
-        }
-
-        // x axis coefficient step
-        v0_ += s.vx[0];
-        v1_ += s.vx[1];
-        iw_ += s.vx[SW];
-
-        // x axis interpolation step
-        itu0 += itudx;
-        itv0 += itvdx;
-      }
-
-      // x chunk step
-      u_ += sux * CHUNK_SIZE;
-      v_ += svx * CHUNK_SIZE;
-    }
-
-    // y axis coefficient step
-    v0 += s.vy[0];
-    v1 += s.vy[1];
-    iw += s.vy[SW];
-    u  += suy;
-    v  += svy;
-
-    // step the framebuffers
-    dst   += f._width;
-    depth += f._width;
-  }
-}
-
-// render using texture
-void draw_tri_tex(const frame_t &f,
-                  const texture_t &tex,
-                  const triangle_setup_t &s) {
-
-  const uint32_t SW = triangle_setup_t::slot_iw;
-  const uint32_t SU = triangle_setup_t::slot_u;
-  const uint32_t SV = triangle_setup_t::slot_v;
-
-  float v0 = (s.vx[0]  * s.bound.x0 + s.vy[0]  * s.bound.y0) - s.v[0];
-  float v1 = (s.vx[1]  * s.bound.x0 + s.vy[1]  * s.bound.y0) - s.v[1];
-
-  float iw = (s.vx[SW] * s.bound.x0 + s.vy[SW] * s.bound.y0) - s.v[SW];
-
-  const uint32_t tex_w      = (tex._width  >> s.mip_level);
-  const uint32_t tex_h      = (tex._height >> s.mip_level);
-  const uint32_t tex_mask_u = tex_w - 1;
-  const uint32_t tex_mask_v = tex_h - 1;
-  const uint32_t tex_shift  = tex._wshift - s.mip_level;
-  const uint32_t *texel     = tex._pixels[s.mip_level];
-
-  const float sux = s.vx[SU] * tex_w;
-  const float svx = s.vx[SV] * tex_h;
-  const float suy = s.vy[SU] * tex_w;
-  const float svy = s.vy[SV] * tex_h;
-  float u = ((s.vx[SU] * s.bound.x0 + s.vy[SU] * s.bound.y0) - s.v[SU]) * tex_w;
-  float v = ((s.vx[SV] * s.bound.x0 + s.vy[SV] * s.bound.y0) - s.v[SV]) * tex_h;
-
-  const uint32_t fb_offset = s.bound.y0 * f._width;
-  uint32_t *dst            = f._pixels + fb_offset;
-  float    *depth          = f._depth  + fb_offset;
-
-  for (int y = s.bound.y0; y <= s.bound.y1; ++y) {
-
-    float v0_ = v0;
-    float v1_ = v1;
-    float iw_ = iw;
-    float u_  = u;
-    float v_  = v;
-
-    for (int x = s.bound.x0; x <= s.bound.x1; ++x) {
-
+      // third edge coefficient
       const float v2_ = 1.f - (v0_ + v1_);
-
-      const float w = iw_;
 
       // triangle edge test
       if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
 
         // depth test
-        if (w >= depth[x]) {
-          depth[x] = w;
+        const float zed = z_;
+        if (zed <= depth[x]) {
 
-          const int32_t iu = int32_t(u_ / iw_) & tex_mask_u;
-          const int32_t iv = int32_t(v_ / iw_) & tex_mask_v;
+          // depth write
+          depth[x] = zed;
 
-          dst[x] = texel[iu + (iv << tex_shift)];
+          // color write
+          const uint8_t r = uint8_t(128 + zed * 127);
+          const uint8_t g = r;
+          const uint8_t b = r;
+          color[x] = (r << 16) | (g << 8) | b;
         }
       }
 
-      // x axis coefficient step
-      v0_ += s.vx[0];
-      v1_ += s.vx[1];
-      iw_ += s.vx[SW];
-      u_  += sux;
-      v_  += svx;
+      // x-axis step
+      v0_ += s.vx[s.slot_w0];
+      v1_ += s.vx[s.slot_w1];
+      iw_ += s.vx[s.slot_iw];
+      z_  += s.vx[s.slot_z];
     }
 
-    // y axis coefficient step
-    v0 += s.vy[0];
-    v1 += s.vy[1];
-    iw += s.vy[SW];
-    u  += suy;
-    v  += svy;
-
-    // step the framebuffers
-    dst   += f._width;
-    depth += f._width;
-  }
-}
-// reset optimizations
-#pragma optimize( "", on )
-
-void drawTri(const frame_t &frame,
-             const triangle_t &t) {
-
-  auto v0 = t.vert[0].coord;
-  auto v1 = t.vert[2].coord;
-  auto v2 = t.vert[1].coord;
-
-  // Compute triangle bounding box
-  const recti_t rect = triangle_bound(frame, v0, v1, v2);
-
-  // the signed triangle area
-  const float area =
-      1.f / ((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y));
-
-  // Triangle setup
-  const float sx01 = (v0.y - v1.y) * area;
-  const float sy01 = (v1.x - v0.x) * area;
-  const float sx12 = (v1.y - v2.y) * area;
-  const float sy12 = (v2.x - v1.x) * area;
-  const float sx20 = (v2.y - v0.y) * area;
-  const float sy20 = (v0.x - v2.x) * area;
-
-  // Barycentric coordinates at minX/minY corner
-  const float2 p{float(rect.x0), float(rect.y0)};
-  float w0y = edgeEval(v1, v2, p) * area;
-  float w1y = edgeEval(v2, v0, p) * area;
-  float w2y = edgeEval(v0, v1, p) * area;
-
-  const float iw0 = 1.f / v0.w;
-  const float iw1 = 1.f / v1.w;
-  const float iw2 = 1.f / v2.w;
-
-        float iw  = w0y  * iw0 + w1y  * iw1 + w2y  * iw2;
-  const float iwx = sx12 * iw0 + sx20 * iw1 + sx01 * iw2;
-  const float iwy = sy12 * iw0 + sy20 * iw1 + sy01 * iw2;
-
-  // pointer to upper left corner
-  uint32_t *dst = frame._pixels + rect.y0 * frame._width;
-  float *zbf = frame._depth + rect.y0 * frame._width;
-
-  // Rasterize
-  for (int32_t y = rect.y0; y <= rect.y1; y++) {
-
-    // Barycentric coordinates at start of row
-    float w0x = w0y;
-    float w1x = w1y;
-    float w2x = w2y;
-    float w   = iw;
-
-    for (int32_t x = rect.x0; x <= rect.x1; x++) {
-
-      // If p is on or inside all edges, render pixel.
-      if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
-
-        // depth test
-        if (w > zbf[x]) {
-
-          zbf[x] = w;
-
-          const uint32_t c = std::min(255, int32_t(w * 64 * 255));
-
-          // renderPixel(p, w0, w1, w2);
-          dst[x] = (c << 16) | (c << 8) | (c);
-        }
-      }
-
-      w0x += sx12;
-      w1x += sx20;
-      w2x += sx01;
-      w   += iwx;
-    }
-
-    // One row step
-    w0y += sy12;
-    w1y += sy20;
-    w2y += sy01;
-    iw  += iwy;
-
-    // step y axis
-    dst += frame._width;
-    zbf += frame._width;
+    // y-axis step
+    v0 += s.vy[s.slot_w0];
+    v1 += s.vy[s.slot_w1];
+    iw += s.vy[s.slot_iw];
+    z  += s.vy[s.slot_z];
+    // framebuffer step
+    color += pitch;
+    depth += pitch;
   }
 }
 
-void drawTriUV(const frame_t &frame,
-               const texture_t &tex,
-               const triangle_t &t) {
-  // position
-  auto v0 = t.vert[0].coord;
-  auto v1 = t.vert[2].coord;
-  auto v2 = t.vert[1].coord;
-  // texture coordinates
-  auto t0 = t.vert[0].tex;
-  auto t1 = t.vert[2].tex;
-  auto t2 = t.vert[1].tex;
+inline void draw_wi_depth_sse(const triangle_setup_t &s,
+                              const texture_t &,
+                              const float2 origin,
+                              uint32_t *color,
+                              float *depth,
+                              uint32_t pitch) {
 
-  // Compute triangle bounding box
-  const recti_t rect = triangle_bound(frame, v0, v1, v2);
+  const float v0 = (s.vx[s.slot_w0] * origin.x + s.vy[s.slot_w0] * origin.y) - s.v[s.slot_w0];
+  const float v1 = (s.vx[s.slot_w1] * origin.x + s.vy[s.slot_w1] * origin.y) - s.v[s.slot_w1];
+  const float iw = (s.vx[s.slot_iw] * origin.x + s.vy[s.slot_iw] * origin.y) - s.v[s.slot_iw];
+  const float z  = (s.vx[s.slot_z ] * origin.x + s.vy[s.slot_z ] * origin.y) - s.v[s.slot_z ];
 
-  // the signed triangle area (screen space)
-  const float area =
-      ((v1.x - v0.x) * (v2.y - v0.y) -
-       (v2.x - v0.x) * (v1.y - v0.y));
-  const float rarea = 1.f / area;
-  if (area == 0.f) {
-    return;
-  }
+  __m128 Sv0x = _mm_set1_ps(s.vx[s.slot_w0] * 4.f);
+  __m128 Sv0y = _mm_set1_ps(s.vy[s.slot_w0]);
+  __m128 Sv0 = step_x(v0, s.vx[s.slot_w0]);
 
-  // the signed area of the UVs (texel space)
-  const float uvarea =
-      (tex._width * tex._height) *
-      ((t1.x - t0.x) * (t2.y - t0.y) -
-       (t2.x - t0.x) * (t1.y - t0.y));
+  __m128 Sv1x = _mm_set1_ps(s.vx[s.slot_w1] * 4.f);
+  __m128 Sv1y = _mm_set1_ps(s.vy[s.slot_w1]);
+  __m128 Sv1  = step_x(v1, s.vx[s.slot_w1]);
 
-  // texel space area / screen space
-  uint32_t mip_level = get_mip_level(area, uvarea);
+  __m128 Siwx = _mm_set1_ps(s.vx[s.slot_iw] * 4.f);
+  __m128 Siwy = _mm_set1_ps(s.vy[s.slot_iw]);
+  __m128 Siw  = step_x(iw, s.vx[s.slot_iw]);
 
-  // Triangle setup
-  const float sx01 = (v0.y - v1.y) * rarea;
-  const float sy01 = (v1.x - v0.x) * rarea;
-  const float sx12 = (v1.y - v2.y) * rarea;
-  const float sy12 = (v2.x - v1.x) * rarea;
-  const float sx20 = (v2.y - v0.y) * rarea;
-  const float sy20 = (v0.x - v2.x) * rarea;
+  __m128 Szx = _mm_set1_ps(s.vx[s.slot_z] * 4.f);
+  __m128 Szy = _mm_set1_ps(s.vy[s.slot_z]);
+  __m128 Sz  = step_x(z, s.vx[s.slot_z]);
 
-  // Barycentric coordinates at minX/minY corner
-  const float2 p{float(rect.x0), float(rect.y0)};
-  float w0y = edgeEval(v1, v2, p) * rarea;
-  float w1y = edgeEval(v2, v0, p) * rarea;
-  float w2y = edgeEval(v0, v1, p) * rarea;
+  for (int y = 0; y < BLOCK_SIZE; ++y) {
 
-  // interpolation coefficients
-  const float iw0 = 1.f / v0.w;
-  const float iw1 = 1.f / v1.w;
-  const float iw2 = 1.f / v2.w;
-  const std::array<float, 9> c = {
-    w0y  * iw0, w1y  * iw1, w2y  * iw2,
-    sx12 * iw0, sx20 * iw1, sx01 * iw2,
-    sy12 * iw0, sy20 * iw1, sy01 * iw2,
-  };
+    __m128 Sv0_ = Sv0;
+    __m128 Sv1_ = Sv1;
+    __m128 Siw_ = Siw;
+    __m128 Sz_  = Sz;
 
-  // w interpolant
-        float iw   = c[0] + c[1] + c[2];
-  const float iwx  = c[3] + c[4] + c[5];
-  const float iwy  = c[6] + c[7] + c[8];
+    for (int x = 0; x < BLOCK_SIZE; x += 4) {
 
-  // tex uv interpolant
-  const uint32_t wshift = tex._wshift - mip_level;
-  const uint32_t texw   = tex._width  >> mip_level;
-  const uint32_t texh   = tex._height >> mip_level;
-  const uint32_t texum  = texw - 1;
-  const uint32_t texvm  = texh - 1;
-  const uint32_t *texel = tex._pixels[mip_level];
-  const float2 tscale = {float(texw), float(texh)};
-        float2 uv  = (c[0] * t0 + c[1] * t1 + c[2] * t2) * tscale;
-  const float2 uvx = (c[3] * t0 + c[4] * t1 + c[5] * t2) * tscale;
-  const float2 uvy = (c[6] * t0 + c[7] * t1 + c[8] * t2) * tscale;
+      // third edge coefficient
+      // const float v2_ = 1.f - (v0_ + v1_);
+      __m128 Sv2_ = _mm_sub_ps(_mm_set_ps1(1.f), _mm_add_ps(Sv0_, Sv1_));
 
-  // pointer to upper left corner
-  uint32_t *dst = frame._pixels + rect.y0 * frame._width;
-     float *zbf = frame._depth  + rect.y0 * frame._width;
+      // load depth values
+      __m128 zbuf = _mm_load_ps(depth + x);
 
-  // rasterize
-  for (int32_t y = rect.y0; y <= rect.y1; y++) {
+      // triangle edge test
+      // if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+      __m128 m0 = _mm_cmpge_ps(Sv0_, _mm_setzero_ps());
+      __m128 m1 = _mm_cmpge_ps(Sv1_, _mm_setzero_ps());
+      __m128 m2 = _mm_cmpge_ps(Sv2_, _mm_setzero_ps());
 
-    // barycentric coordinates at start of row
-    float  w0x = w0y;
-    float  w1x = w1y;
-    float  w2x = w2y;
-    float  hw  = iw;
-    float2 huv = uv;
+      // triangle edge test and depth (together)
+      // if (zed <= depth[x]) {
+      __m128 keep = _mm_and_ps(_mm_and_ps(m0, _mm_cmple_ps(Sz_, zbuf)),
+                               _mm_and_ps(m1, m2));
 
-    for (int32_t x = rect.x0; x <= rect.x1; x++) {
+      // depth write
+      // depth[x] = zed;
+      _mm_maskstore_ps(depth + x, _mm_castps_si128(keep), Sz_);
 
-      // if p is on or inside all edges, render pixel.
-      if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
+      // color write
+      __m128  rgb1 = _mm_add_ps(_mm_set_ps1(128.f), _mm_mul_ps(Sz_, _mm_set_ps1(127.f)));
+      __m128i rgb2 = _mm_cvtps_epi32(rgb1);
+      __m128i rgb3 = _mm_or_si128(_mm_slli_epi32(rgb2, 8),
+                                  _mm_or_si128(_mm_slli_epi32(rgb2, 16),
+                                               rgb2));
+      _mm_maskstore_epi32((int*)color + x, _mm_castps_si128(keep), rgb3);
 
-        // depth test
-        if (hw > zbf[x]) {
-
-          const int32_t u = int32_t(huv.x / hw) & texum;
-          const int32_t v = int32_t(huv.y / hw) & texvm;
-
-          zbf[x] = hw;
-          dst[x] = texel[u + (v << wshift)];
-        }
-      }
-
-      // step in the x axis
-      w0x += sx12;
-      w1x += sx20;
-      w2x += sx01;
-      hw  += iwx;
-      huv += uvx;
+      // x-axis step
+      Sv0_ = _mm_add_ps(Sv0_, Sv0x);
+      Sv1_ = _mm_add_ps(Sv1_, Sv1x);
+      Siw_ = _mm_add_ps(Siw_, Siwx);
+      Sz_  = _mm_add_ps(Sz_ , Szx );
     }
 
-    // step in the y axis
-    w0y += sy12;
-    w1y += sy20;
-    w2y += sy01;
-    iw  += iwy;
-    uv  += uvy;
+    // y-axis step
+    Sv0 = _mm_add_ps(Sv0, Sv0y);
+    Sv1 = _mm_add_ps(Sv1, Sv1y);
+    Siw = _mm_add_ps(Siw, Siwy);
+    Sz  = _mm_add_ps(Sz , Szy );
 
+    // framebuffer step
+    color += pitch;
+    depth += pitch;
+  }
+}
+
+inline void draw_wi_texture(const triangle_setup_t &s,
+                            const texture_t &tex,
+                            const float2 origin,
+                            uint32_t *color,
+                            float *depth,
+                            uint32_t pitch) {
+
+  const float v0 = (s.vx[s.slot_w0] * origin.x + s.vy[s.slot_w0] * origin.y) - s.v[s.slot_w0];
+  const float v1 = (s.vx[s.slot_w1] * origin.x + s.vy[s.slot_w1] * origin.y) - s.v[s.slot_w1];
+  const float iw = (s.vx[s.slot_iw] * origin.x + s.vy[s.slot_iw] * origin.y) - s.v[s.slot_iw];
+  const float z  = (s.vx[s.slot_z ] * origin.x + s.vy[s.slot_z ] * origin.y) - s.v[s.slot_z ];
+  const float u  = (s.vx[s.slot_u ] * origin.x + s.vy[s.slot_u ] * origin.y) - s.v[s.slot_u ];
+  const float v  = (s.vx[s.slot_v ] * origin.x + s.vy[s.slot_v ] * origin.y) - s.v[s.slot_v ];
+
+  __m128 Sv0x = _mm_set1_ps(s.vx[s.slot_w0] * 4.f);
+  __m128 Sv0y = _mm_set1_ps(s.vy[s.slot_w0]);
+  __m128 Sv0 = step_x(v0, s.vx[s.slot_w0]);
+
+  __m128 Sv1x = _mm_set1_ps(s.vx[s.slot_w1] * 4.f);
+  __m128 Sv1y = _mm_set1_ps(s.vy[s.slot_w1]);
+  __m128 Sv1  = step_x(v1, s.vx[s.slot_w1]);
+
+  __m128 Siwx = _mm_set1_ps(s.vx[s.slot_iw] * 4.f);
+  __m128 Siwy = _mm_set1_ps(s.vy[s.slot_iw]);
+  __m128 Siw  = step_x(iw, s.vx[s.slot_iw]);
+
+  __m128 Szx = _mm_set1_ps(s.vx[s.slot_z] * 4.f);
+  __m128 Szy = _mm_set1_ps(s.vy[s.slot_z]);
+  __m128 Sz  = step_x(z, s.vx[s.slot_z]);
+
+  const int32_t tw = tex._width >> s.mip_level;
+  const int32_t twm = tw - 1;
+  __m128 Sux = _mm_set1_ps(s.vx[s.slot_u] * 4.f * tw);
+  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u]       * tw);
+  __m128 Su  = step_x(u * tw, s.vx[s.slot_u]    * tw);
+  __m128i Stwm = _mm_set_epi32(twm, twm, twm, twm);
+
+  const int32_t th = tex._height >> s.mip_level;
+  const int32_t thm = th - 1;
+  __m128 Svx = _mm_set1_ps(s.vx[s.slot_v] * 4.f * th);
+  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v]       * th);
+  __m128 Sv  = step_x(v * th,   s.vx[s.slot_v]  * th);
+  __m128i Sthm = _mm_set_epi32(thm, thm, thm, thm);
+
+  const uint32_t wshift = tex._wshift - s.mip_level;
+  const uint32_t *texel = tex._pixels[s.mip_level];
+
+  for (int y = 0; y < BLOCK_SIZE; ++y) {
+
+    __m128 Sv0_ = Sv0;
+    __m128 Sv1_ = Sv1;
+    __m128 Siw_ = Siw;
+    __m128 Sz_  = Sz;
+    __m128 Su_  = Su;
+    __m128 Sv_  = Sv;
+
+    for (int x = 0; x < BLOCK_SIZE; x += 4) {
+
+      // third edge coefficient
+      // const float v2_ = 1.f - (v0_ + v1_);
+      __m128 Sv2_ = _mm_sub_ps(_mm_set_ps1(1.f), _mm_add_ps(Sv0_, Sv1_));
+
+      // load depth values
+      __m128 zbuf = _mm_load_ps(depth + x);
+
+      // triangle edge test
+      // if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
+      __m128 m0 = _mm_cmpge_ps(Sv0_, _mm_setzero_ps());
+      __m128 m1 = _mm_cmpge_ps(Sv1_, _mm_setzero_ps());
+      __m128 m2 = _mm_cmpge_ps(Sv2_, _mm_setzero_ps());
+
+      // triangle edge test and depth (together)
+      // if (zed <= depth[x]) {
+      // XXX: should be cmple
+      __m128 keep = _mm_and_ps(_mm_and_ps(m0, _mm_cmplt_ps(Sz_, zbuf)),
+                               _mm_and_ps(m1, m2));
+
+      // depth write
+      // depth[x] = zed;
+      _mm_maskstore_ps(depth + x, _mm_castps_si128(keep), Sz_);
+
+      // find 1 / (1/w)
+      __m128  rw = _mm_rcp_ps(Siw_);
+      
+      // u / (1/w),  v / (1/w)
+      // ((int32_t(u/iw)&twm) +
+      //  (int32_t(u/iw)&twm) << tex._wshift)
+      __m128i tu  = _mm_and_si128(_mm_cvtps_epi32(_mm_div_ps(Su_, Siw_)), Stwm);
+      __m128i tv  = _mm_and_si128(_mm_cvtps_epi32(_mm_div_ps(Sv_, Siw_)), Sthm);
+      __m128i ti  = _mm_add_epi32(tu, _mm_slli_epi32(tv, wshift));
+
+      // extract texture indices
+      uint32_t ti0 = _mm_extract_epi32(ti, 0);
+      uint32_t ti1 = _mm_extract_epi32(ti, 1);
+      uint32_t ti2 = _mm_extract_epi32(ti, 2);
+      uint32_t ti3 = _mm_extract_epi32(ti, 3);
+
+      // load from the texture
+      uint32_t tc0 = texel[ti0];
+      uint32_t tc1 = texel[ti1];
+      uint32_t tc2 = texel[ti2];
+      uint32_t tc3 = texel[ti3];
+
+      // color write
+      __m128i rgb = _mm_set_epi32(tc3, tc2, tc1, tc0);
+      _mm_maskstore_epi32((int*)color + x, _mm_castps_si128(keep), rgb);
+
+      // x-axis step
+      Sv0_ = _mm_add_ps(Sv0_, Sv0x);
+      Sv1_ = _mm_add_ps(Sv1_, Sv1x);
+      Siw_ = _mm_add_ps(Siw_, Siwx);
+      Sz_  = _mm_add_ps(Sz_ , Szx );
+      Su_  = _mm_add_ps(Su_ , Sux );
+      Sv_  = _mm_add_ps(Sv_ , Svx );
+    }
+
+    // y-axis step
+    Sv0 = _mm_add_ps(Sv0, Sv0y);
+    Sv1 = _mm_add_ps(Sv1, Sv1y);
+    Siw = _mm_add_ps(Siw, Siwy);
+    Sz  = _mm_add_ps(Sz , Szy );
+    Su  = _mm_add_ps(Su , Suy );
+    Sv  = _mm_add_ps(Sv , Svy );
+
+    // framebuffer step
+    color += pitch;
+    depth += pitch;
+  }
+}
+
+// trivial in case
+inline void draw_wi_texture_ti(const triangle_setup_t &s,
+                               const texture_t &tex,
+                               const float2 origin,
+                               uint32_t *color,
+                               float *depth,
+                               uint32_t pitch) {
+
+  const float iw = (s.vx[s.slot_iw] * origin.x + s.vy[s.slot_iw] * origin.y) - s.v[s.slot_iw];
+  const float z  = (s.vx[s.slot_z ] * origin.x + s.vy[s.slot_z ] * origin.y) - s.v[s.slot_z ];
+  const float u  = (s.vx[s.slot_u ] * origin.x + s.vy[s.slot_u ] * origin.y) - s.v[s.slot_u ];
+  const float v  = (s.vx[s.slot_v ] * origin.x + s.vy[s.slot_v ] * origin.y) - s.v[s.slot_v ];
+
+  __m128 Siwx = _mm_set1_ps(s.vx[s.slot_iw] * 4.f);
+  __m128 Siwy = _mm_set1_ps(s.vy[s.slot_iw]);
+  __m128 Siw  = step_x(iw, s.vx[s.slot_iw]);
+
+  __m128 Szx = _mm_set1_ps(s.vx[s.slot_z] * 4.f);
+  __m128 Szy = _mm_set1_ps(s.vy[s.slot_z]);
+  __m128 Sz  = step_x(z, s.vx[s.slot_z]);
+
+  const int32_t tw = tex._width >> s.mip_level;
+  const int32_t twm = tw - 1;
+  __m128 Sux = _mm_set1_ps(s.vx[s.slot_u] * 4.f * tw);
+  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u]       * tw);
+  __m128 Su  = step_x(u * tw, s.vx[s.slot_u]    * tw);
+  __m128i Stwm = _mm_set_epi32(twm, twm, twm, twm);
+
+  const int32_t th = tex._height >> s.mip_level;
+  const int32_t thm = th - 1;
+  __m128 Svx = _mm_set1_ps(s.vx[s.slot_v] * 4.f * th);
+  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v]       * th);
+  __m128 Sv  = step_x(v * th,   s.vx[s.slot_v]  * th);
+  __m128i Sthm = _mm_set_epi32(thm, thm, thm, thm);
+
+  const uint32_t wshift = tex._wshift - s.mip_level;
+  const uint32_t *texel = tex._pixels[s.mip_level];
+
+  for (int y = 0; y < BLOCK_SIZE; ++y) {
+
+    __m128 Siw_ = Siw;
+    __m128 Sz_  = Sz;
+    __m128 Su_  = Su;
+    __m128 Sv_  = Sv;
+
+    for (int x = 0; x < BLOCK_SIZE; x += 4) {
+
+      // load depth values
+      __m128 zbuf = _mm_load_ps(depth + x);
+
+      // triangle edge test and depth (together)
+      // if (zed <= depth[x]) {
+      // XXX: should be cmple
+      __m128 keep = _mm_cmplt_ps(Sz_, zbuf);
+
+      // depth write
+      // depth[x] = zed;
+      _mm_maskstore_ps(depth + x, _mm_castps_si128(keep), Sz_);
+
+      // find 1 / (1/w)
+      __m128  rw = _mm_rcp_ps(Siw_);
+      
+      // u / (1/w),  v / (1/w)
+      // ((int32_t(u/iw)&twm) +
+      //  (int32_t(u/iw)&twm) << tex._wshift)
+      __m128i tu  = _mm_and_si128(_mm_cvtps_epi32(_mm_div_ps(Su_, Siw_)), Stwm);
+      __m128i tv  = _mm_and_si128(_mm_cvtps_epi32(_mm_div_ps(Sv_, Siw_)), Sthm);
+      __m128i ti  = _mm_add_epi32(tu, _mm_slli_epi32(tv, wshift));
+
+      // extract texture indices
+      uint32_t ti0 = _mm_extract_epi32(ti, 0);
+      uint32_t ti1 = _mm_extract_epi32(ti, 1);
+      uint32_t ti2 = _mm_extract_epi32(ti, 2);
+      uint32_t ti3 = _mm_extract_epi32(ti, 3);
+
+      // load from the texture
+      uint32_t tc0 = texel[ti0];
+      uint32_t tc1 = texel[ti1];
+      uint32_t tc2 = texel[ti2];
+      uint32_t tc3 = texel[ti3];
+
+      // color write
+      __m128i rgb = _mm_set_epi32(tc3, tc2, tc1, tc0);
+      _mm_maskstore_epi32((int*)color + x, _mm_castps_si128(keep), rgb);
+
+      // x-axis step
+      Siw_ = _mm_add_ps(Siw_, Siwx);
+      Sz_  = _mm_add_ps(Sz_ , Szx );
+      Su_  = _mm_add_ps(Su_ , Sux );
+      Sv_  = _mm_add_ps(Sv_ , Svx );
+    }
+
+    // y-axis step
+    Siw = _mm_add_ps(Siw, Siwy);
+    Sz  = _mm_add_ps(Sz , Szy );
+    Su  = _mm_add_ps(Su , Suy );
+    Sv  = _mm_add_ps(Sv , Svy );
+
+    // framebuffer step
+    color += pitch;
+    depth += pitch;
+  }
+}
+
+static inline int32_t normal_quadrant(const float3 &edge) {
+    return (edge.x > 0.f) | ((edge.y > 0.f) << 1);
+}
+
+static inline bool test_out(const float3 &edge,
+                            const float2 &p) {
+  return (p.x * edge.x + p.y * edge.y) < edge.z;
+}
+
+static inline bool test_in(const float3 &edge,
+                            const float2 &p) {
+  return (p.x * edge.x + p.y * edge.y) > edge.z;
+}
+
+static inline bool trivial_out(const float3 &e,
+                               const float2 &min,
+                               const float2 & max) {
+  switch (normal_quadrant( e )) {
+  case 3: return test_out(e, float2{max.x, max.y}); // (+,+) -> box (-, -)
+  case 2: return test_out(e, float2{min.x, max.y}); // (-,+) -> box (+, -)
+  case 1: return test_out(e, float2{max.x, min.y}); // (+,-) -> box (-, +)
+  case 0: return test_out(e, float2{min.x, min.y}); // (-,-) -> box (+, +)
+  default: __assume(false);
+  }
+  return false;
+}
+
+static inline bool trivial_in(const float3 &e,
+                              const float2 &min,
+                              const float2 & max) {
+  switch (normal_quadrant( e )) {
+  case 3: return test_in(e, float2{min.x, min.y}); // (+,+) -> box (+, +)
+  case 2: return test_in(e, float2{max.x, min.y}); // (-,+) -> box (-, +)
+  case 1: return test_in(e, float2{min.x, max.y}); // (+,-) -> box (+, -)
+  case 0: return test_in(e, float2{max.x, max.y}); // (-,-) -> box (-, -)
+  default: __assume(false);
+  }
+  return false;
+}
+
+typedef void(*raster_func_t)(const triangle_setup_t &,
+                             const texture_t &,
+                             const float2,
+                             uint32_t *,
+                             float *,
+                             uint32_t);
+
+// render depth
+template <raster_func_t func, raster_func_t func_ti>
+void draw_wg(const frame_t &f, const triangle_setup_t &s, const texture_t &tex) {
+  const recti_t rect = { s.bound.x0                   & BLOCK_MASK,
+                         s.bound.y0                   & BLOCK_MASK,
+                        (s.bound.x1 + BLOCK_SIZE - 1) & BLOCK_MASK,
+                        (s.bound.y1 + BLOCK_SIZE - 1) & BLOCK_MASK};
+  const auto &e0 = s.edge[0];
+  const auto &e1 = s.edge[1];
+  const auto &e2 = s.edge[2];
+  const uint32_t  pitch = f._width;
+  uint32_t *color = f._pixels + (rect.y0 * pitch);
+  float    *depth = f._depth  + (rect.y0 * pitch);
+  for (int32_t y = rect.y0; y < rect.y1; y += BLOCK_SIZE) {
+    for (int32_t x = rect.x0; x < rect.x1; x += BLOCK_SIZE) {
+      const float2 min{ float(x             ), float(y             ) };
+      const float2 max{ float(x + BLOCK_SIZE), float(y + BLOCK_SIZE) };
+      if (trivial_out(e0, min, max)) continue;
+      if (trivial_out(e1, min, max)) continue;
+      if (trivial_out(e2, min, max)) continue;
+      if (trivial_in(e0, min, max) &&
+          trivial_in(e1, min, max) &&
+          trivial_in(e2, min, max)) {
+        func_ti(s, tex, min, color + x, depth + x, pitch);
+      }
+      else {
+        func(s, tex, min, color + x, depth + x, pitch);
+      }
+    }
     // step the framebuffer
-    dst += frame._width;
-    zbf += frame._width;
-  }
-}
-
-void drawTriUV2(const frame_t &frame,
-                const texture_t &tex,
-                const triangle_t &t) {
-  // position
-  auto v0 = t.vert[0].coord;
-  auto v1 = t.vert[2].coord;
-  auto v2 = t.vert[1].coord;
-  // texture coordinates
-  auto t0 = t.vert[0].tex;
-  auto t1 = t.vert[2].tex;
-  auto t2 = t.vert[1].tex;
-
-  // Compute triangle bounding box
-  const recti_t rect = triangle_bound(frame, v0, v1, v2);
-
-  // the signed triangle area (screen space)
-  const float area =
-      ((v1.x - v0.x) * (v2.y - v0.y) -
-       (v2.x - v0.x) * (v1.y - v0.y));
-  const float rarea = 1.f / area;
-  if (area == 0.f) {
-    return;
-  }
-
-  // the signed area of the UVs (texel space)
-  const float uvarea =
-      (tex._width * tex._height) *
-      ((t1.x - t0.x) * (t2.y - t0.y) -
-       (t2.x - t0.x) * (t1.y - t0.y));
-
-  // texel space area / screen space
-  uint32_t mip_level = get_mip_level(area, uvarea);
-
-  // Triangle setup
-  const float sx01 = (v0.y - v1.y) * rarea;
-  const float sy01 = (v1.x - v0.x) * rarea;
-  const float sx12 = (v1.y - v2.y) * rarea;
-  const float sy12 = (v2.x - v1.x) * rarea;
-  const float sx20 = (v2.y - v0.y) * rarea;
-  const float sy20 = (v0.x - v2.x) * rarea;
-
-  // Barycentric coordinates at minX/minY corner
-  const float2 p{float(rect.x0), float(rect.y0)};
-  float w0y = edgeEval(v1, v2, p) * rarea;
-  float w1y = edgeEval(v2, v0, p) * rarea;
-  float w2y = edgeEval(v0, v1, p) * rarea;
-
-  // interpolation coefficients
-  const float iw0 = 1.f / v0.w;
-  const float iw1 = 1.f / v1.w;
-  const float iw2 = 1.f / v2.w;
-  const std::array<float, 9> c = {
-    w0y  * iw0, w1y  * iw1, w2y  * iw2,
-    sx12 * iw0, sx20 * iw1, sx01 * iw2,
-    sy12 * iw0, sy20 * iw1, sy01 * iw2,
-  };
-
-  // w interpolant
-        float iw   = c[0] + c[1] + c[2];
-  const float iwx  = c[3] + c[4] + c[5];
-  const float iwy  = c[6] + c[7] + c[8];
-
-  // tex uv interpolant
-  const uint32_t wshift = tex._wshift - mip_level;
-  const uint32_t texw   = tex._width  >> mip_level;
-  const uint32_t texh   = tex._height >> mip_level;
-  const uint32_t texum  = texw - 1;
-  const uint32_t texvm  = texh - 1;
-  const uint32_t *texel = tex._pixels[mip_level];
-  const float2 tscale = {float(texw), float(texh)};
-        float2 uv  = (c[0] * t0 + c[1] * t1 + c[2] * t2) * tscale;
-  const float2 uvx = (c[3] * t0 + c[4] * t1 + c[5] * t2) * tscale;
-  const float2 uvy = (c[6] * t0 + c[7] * t1 + c[8] * t2) * tscale;
-
-  // pointer to upper left corner
-  uint32_t *dst = frame._pixels + rect.y0 * frame._width;
-     float *zbf = frame._depth  + rect.y0 * frame._width;
-
-  // rasterize
-  for (int32_t y = rect.y0; y <= rect.y1; y++) {
-
-    // barycentric coordinates at start of row
-    float  w0x = w0y;
-    float  w1x = w1y;
-    float  hw  = iw;
-    float2 huv = uv;
-
-    for (int32_t x = rect.x0; x <= rect.x1;) {
-
-      static const uint32_t stride = 16;
-
-      // compute current uvs
-      int32_t u0 = 65536 * huv.x / hw;
-      int32_t v0 = 65536 * huv.y / hw;
-      // compute uvs at end of span
-      int32_t u1 = 65536 * (huv.x + uvx.x * stride) / (hw + iwx * stride);
-      int32_t v1 = 65536 * (huv.y + uvx.y * stride) / (hw + iwx * stride);
-      // compute uv deltas
-      const int32_t udelta = (u1 - u0) / stride;
-      const int32_t vdelta = (v1 - v0) / stride;
-
-      // render the interpolated span
-      int32_t nx = x + stride;
-      for (; x < nx && x <= rect.x1; ++x) {
-
-        const float w2x = 1.f - (w0x + w1x);
-
-        // if p is on or inside all edges, render pixel.
-        if (w0x > 0.f && w1x > 0.f && w2x > 0.f) {
-
-          // depth test
-          if (hw >= zbf[x]) {
-
-            const int32_t u = (u0 >> 16) & texum;
-            const int32_t v = (v0 >> 16) & texvm;
-
-            zbf[x] = hw;
-            dst[x] = texel[u + (v << wshift)];
-          }
-        }
-
-        // step the interpolated uvs
-        u0 += udelta;
-        v0 += vdelta;
-
-        // step in the x axis
-        w0x += sx12;  // edge interpolant
-        w1x += sx20;  // edge interpolant
-        hw  += iwx;   // 1/w
-      }
-
-      // step real uv/w
-      huv += uvx * stride;
-    }
-
-    // step in the y axis
-    w0y += sy12;
-    w1y += sy20;
-    iw  += iwy;
-    uv  += uvy;
-
-    // step the framebuffer
-    dst += frame._width;
-    zbf += frame._width;
-  }
-}
-
-void drawTriARGB(const frame_t &frame,
-                 const texture_t &tex,
-                 const triangle_t &t) {
-  // position
-  const auto &v0 = t.vert[0].coord;
-  const auto &v1 = t.vert[2].coord;
-  const auto &v2 = t.vert[1].coord;
-  // texture coordinates
-  // ARGB layout
-  const auto &t0 = t.vert[0].rgba;
-  const auto &t1 = t.vert[2].rgba;
-  const auto &t2 = t.vert[1].rgba;
-
-  // Compute triangle bounding box
-  const recti_t rect = triangle_bound(frame, v0, v1, v2);
-
-  // the signed triangle area
-  const float area =
-      1.f / ((v1.x - v0.x) * (v2.y - v0.y) -
-             (v2.x - v0.x) * (v1.y - v0.y));
-
-  // Triangle setup
-  const float sx01 = (v0.y - v1.y) * area;
-  const float sy01 = (v1.x - v0.x) * area;
-  const float sx12 = (v1.y - v2.y) * area;
-  const float sy12 = (v2.x - v1.x) * area;
-  const float sx20 = (v2.y - v0.y) * area;
-  const float sy20 = (v0.x - v2.x) * area;
-
-  // Barycentric coordinates at minX/minY corner
-  const float2 p{float(rect.x0), float(rect.y0)};
-  float w0y = edgeEval(v1, v2, p) * area;
-  float w1y = edgeEval(v2, v0, p) * area;
-  float w2y = edgeEval(v0, v1, p) * area;
-
-  // interpolation coefficients
-  const float iw0 = 1.f / v0.w;
-  const float iw1 = 1.f / v1.w;
-  const float iw2 = 1.f / v2.w;
-  const std::array<float, 9> c = {
-    w0y  * iw0, w1y  * iw1, w2y  * iw2,
-    sx12 * iw0, sx20 * iw1, sx01 * iw2,
-    sy12 * iw0, sy20 * iw1, sy01 * iw2,
-  };
-
-  // w interpolant
-        float iw   = c[0]      + c[1]      + c[2];
-  const float iwx  = c[3]      + c[4]      + c[5];
-  const float iwy  = c[6]      + c[7]      + c[8];
-
-  // rgba uv interpolant
-        float4 uv  = (c[0] * t0 + c[1] * t1 + c[2] * t2);
-  const float4 uvx = (c[3] * t0 + c[4] * t1 + c[5] * t2);
-  const float4 uvy = (c[6] * t0 + c[7] * t1 + c[8] * t2);
-
-  // pointer to upper left corner
-  uint32_t *dst = frame._pixels + rect.y0 * frame._width;
-     float *zbf = frame._depth  + rect.y0 * frame._width;
-
-  // Rasterize
-  for (int32_t y = rect.y0; y <= rect.y1; y++) {
-
-    // Barycentric coordinates at start of row
-    float w0x = w0y;
-    float w1x = w1y;
-    float w2x = w2y;
-    float hw = iw;
-    float4 huv = uv;
-
-    for (int32_t x = rect.x0; x <= rect.x1; x++) {
-
-      // If p is on or inside all edges, render pixel.
-      if (w0x >= 0.f && w1x >= 0.f && w2x >= 0.f) {
-
-        // depth test
-        if (hw > zbf[x]) {
-
-          const int32_t a = int32_t(255 * huv.x / hw);
-          const int32_t r = int32_t(255 * huv.y / hw);
-          const int32_t g = int32_t(255 * huv.z / hw);
-          const int32_t b = int32_t(255 * huv.w / hw);
-
-          zbf[x] = hw;
-
-          dst[x] = (a << 24) | (r << 16) | (g << 8) | (b);
-        }
-      }
-
-      // step in the x axis
-      w0x += sx12;
-      w1x += sx20;
-      w2x += sx01;
-      hw  += iwx;
-      huv += uvx;
-    }
-
-    // step in the y axis
-    w0y += sy12;
-    w1y += sy20;
-    w2y += sy01;
-    iw  += iwy;
-    uv  += uvy;
-
-    // step the framebuffer
-    dst += frame._width;
-    zbf += frame._width;
+    color += pitch * BLOCK_SIZE;
+    depth += pitch * BLOCK_SIZE;
   }
 }
 
@@ -1113,7 +613,7 @@ struct rast_reference_t : public raster_t {
         _cxt->buffer.clear_colour(0x202020);
       }
       if (depth) {
-        _cxt->buffer.clear_depth(-100.f);
+        _cxt->buffer.clear_depth(clear_depth);
       }
     }
   }
@@ -1159,24 +659,11 @@ struct rast_reference_t : public raster_t {
         continue;
       }
 
-      if (state.blendFrag) {
-        if (state.blendFuncDst == GL_SRC_COLOR && state.blendFuncSrc == GL_DST_COLOR) {
-//          draw_tri_tex_aprox_lightmap(_frame, *tex, setup);
-        }
-        if (state.blendFuncDst == GL_ONE_MINUS_SRC_ALPHA && state.blendFuncSrc == GL_SRC_ALPHA) {
-//          draw_tri_tex_aprox_alpha(_frame, *tex, setup);
-        }
-        if (state.blendFuncDst == GL_ZERO && state.blendFuncSrc == GL_ONE) {
-          draw_tri_tex_aprox(_frame, *tex, setup);
-        }
+      if (tex && tex->_pixels[0]) {
+        draw_wg<draw_wi_texture, draw_wi_texture_ti>(_frame, setup, *tex);
       }
       else {
-        if (tex && tex->_pixels[0]) {
-          draw_tri_tex_aprox(_frame, *tex, setup);
-        }
-        else {
-          // ?
-        }
+        draw_wg<draw_wi_depth_sse, draw_wi_depth_sse>(_frame, setup, *tex);
       }
     }
   }
@@ -1251,6 +738,11 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
   const float s1 = evaluate(n1, v2);
   const float s2 = evaluate(n2, v0);
 
+  // store edges
+  s.edge[0] = float3{n0.x, n0.y, s0};
+  s.edge[1] = float3{n1.x, n1.y, s1};
+  s.edge[2] = float3{n2.x, n2.y, s2};
+
   // edge function interpolants
   {
     s. v[triangle_setup_t::slot_w0] = s0;
@@ -1269,27 +761,37 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
 
   // 1/w interpolation
   {
-    const float iw0 = 1.f / t.vert[0].coord.w;
-    const float iw1 = 1.f / t.vert[1].coord.w;
-    const float iw2 = 1.f / t.vert[2].coord.w;
+    const float iw0 = t.vert[0].coord.w;
+    const float iw1 = t.vert[1].coord.w;
+    const float iw2 = t.vert[2].coord.w;
 
     c[0] = s0   * iw0;  c[1] = s1   * iw1; c[2] = s2   * iw2;
     c[3] = n0.x * iw0;  c[4] = n1.x * iw1; c[5] = n2.x * iw2;
     c[6] = n0.y * iw0;  c[7] = n1.y * iw1; c[8] = n2.y * iw2;
 
     const uint32_t slot = triangle_setup_t::slot_iw;
-    s. v[slot] = c[0] + c[1] + c[2];
+    s.v [slot] = c[0] + c[1] + c[2];
     s.vx[slot] = c[3] + c[4] + c[5];
     s.vy[slot] = c[6] + c[7] + c[8];
   }
 
-#if 0
+  // z
+  {
+    const uint32_t slot = triangle_setup_t::slot_z;
+    const float a0 = t.vert[0].coord.z;
+    const float a1 = t.vert[1].coord.z;
+    const float a2 = t.vert[2].coord.z;
+    s.v [slot] = s0   * a0 + s1   * a1 + s2   * a2;
+    s.vx[slot] = n0.x * a0 + n1.x * a1 + n2.x * a2;
+    s.vy[slot] = n0.y * a0 + n1.y * a1 + n2.y * a2;
+  }
+
   // r
   {
     const uint32_t slot = triangle_setup_t::slot_r;
-    const float a0 = t.vert[0].rgba.x;
-    const float a1 = t.vert[1].rgba.x;
-    const float a2 = t.vert[2].rgba.x;
+    const float a0 = t.vert[0].rgba.w;
+    const float a1 = t.vert[1].rgba.w;
+    const float a2 = t.vert[2].rgba.w;
     s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
     s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
     s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
@@ -1316,7 +818,6 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
     s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
     s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
   }
-#endif
 
   // u
   {
@@ -1344,7 +845,11 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
 }
 
 extern "C" {
-__declspec(dllexport) raster_t *raster_create() { return new rast_reference_t; }
+__declspec(dllexport) raster_t *raster_create() {
+  return new rast_reference_t;
+}
 
-__declspec(dllexport) void raster_release(raster_t *r) { delete r; }
+__declspec(dllexport) void raster_release(raster_t *r) {
+  delete r;
+}
 };
