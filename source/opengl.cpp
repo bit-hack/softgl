@@ -466,6 +466,7 @@ void __stdcall glDepthMask(GLboolean flag) {
 
 void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
   TRACE();
+  return;
   //
   if (gl_context_t *cxt = Context) {
     cxt->on_flush();

@@ -1,4 +1,4 @@
-file(GLOB C_FILES *.cpp)
+file(GLOB C_FILES *.cpp kernels/*.cpp)
 file(GLOB H_FILES *.h)
 
 add_library(

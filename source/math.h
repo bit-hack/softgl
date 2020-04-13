@@ -445,6 +445,10 @@ struct rect_t {
   type_t dy() const {
     return y1 - y0;
   }
+
+  type_t area() const {
+    return dx() * dy();
+  }
 };
 
 using int2 = vec2_t<int32_t>;
