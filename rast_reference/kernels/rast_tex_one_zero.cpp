@@ -1,5 +1,6 @@
 #include "../kernel.h"
 
+#define DEPTH_CMP _mm_cmple_ps
 
 static inline void stamp_affine(
   const triangle_setup_t &s,
@@ -18,31 +19,31 @@ static inline void stamp_affine(
 
   __m128 Sv0x = _mm_set1_ps(s.vx[s.slot_w0] * 4.f);
   __m128 Sv0y = _mm_set1_ps(s.vy[s.slot_w0]);
-  __m128 Sv0 = step_x(v0,   s.vx[s.slot_w0]);
+  __m128 Sv0 = step_x(v0, s.vx[s.slot_w0]);
 
   __m128 Sv1x = _mm_set1_ps(s.vx[s.slot_w1] * 4.f);
   __m128 Sv1y = _mm_set1_ps(s.vy[s.slot_w1]);
-  __m128 Sv1  = step_x(v1,  s.vx[s.slot_w1]);
+  __m128 Sv1 = step_x(v1, s.vx[s.slot_w1]);
 
   __m128 Szx = _mm_set1_ps(s.vx[s.slot_z] * 4.f);
   __m128 Szy = _mm_set1_ps(s.vy[s.slot_z]);
-  __m128 Sz  = step_x(z,   s.vx[s.slot_z]);
+  __m128 Sz = step_x(z, s.vx[s.slot_z]);
 
   const int32_t tw = tex._width >> s.mip_level;
   const int32_t twm = tw - 1;
   __m128 Sux = _mm_set1_ps(s.vx[s.slot_u] * 4.f * tw);
-  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u]       * tw);
-  __m128 Su  = step_x(u * tw, s.vx[s.slot_u]    * tw);
+  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u] * tw);
+  __m128 Su = step_x(u * tw, s.vx[s.slot_u] * tw);
   __m128i Stwm = _mm_set_epi32(twm, twm, twm, twm);
 
   const int32_t th = tex._height >> s.mip_level;
   const int32_t thm = th - 1;
   __m128 Svx = _mm_set1_ps(s.vx[s.slot_v] * 4.f * th);
-  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v]       * th);
-  __m128 Sv  = step_x(v * th,   s.vx[s.slot_v]  * th);
+  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v] * th);
+  __m128 Sv = step_x(v * th, s.vx[s.slot_v] * th);
   __m128i Sthm = _mm_set_epi32(thm, thm, thm, thm);
 
-  const uint32_t wshift = tex._wshift - s.mip_level;
+  const int32_t wshift = std::max<int32_t>(0, int32_t(tex._wshift) - int32_t(s.mip_level));
   const uint32_t *texel = tex._pixels[s.mip_level];
 
   for (int y = 0; y < BLOCK_SIZE; ++y) {
@@ -71,7 +72,7 @@ static inline void stamp_affine(
       // triangle edge test and depth (together)
       // if (zed <= depth[x]) {
       // XXX: should be cmple
-      __m128 keep = _mm_and_ps(_mm_and_ps(m0, _mm_cmplt_ps(Sz_, zbuf)),
+      __m128 keep = _mm_and_ps(_mm_and_ps(m0, DEPTH_CMP(Sz_, zbuf)),
                                _mm_and_ps(m1, m2));
 
       // depth write
@@ -143,31 +144,31 @@ static inline void stamp(
 
   __m128 Sv1x = _mm_set1_ps(s.vx[s.slot_w1] * 4.f);
   __m128 Sv1y = _mm_set1_ps(s.vy[s.slot_w1]);
-  __m128 Sv1  = step_x(v1, s.vx[s.slot_w1]);
+  __m128 Sv1 = step_x(v1, s.vx[s.slot_w1]);
 
   __m128 Siwx = _mm_set1_ps(s.vx[s.slot_iw] * 4.f);
   __m128 Siwy = _mm_set1_ps(s.vy[s.slot_iw]);
-  __m128 Siw  = step_x(iw, s.vx[s.slot_iw]);
+  __m128 Siw = step_x(iw, s.vx[s.slot_iw]);
 
   __m128 Szx = _mm_set1_ps(s.vx[s.slot_z] * 4.f);
   __m128 Szy = _mm_set1_ps(s.vy[s.slot_z]);
-  __m128 Sz  = step_x(z, s.vx[s.slot_z]);
+  __m128 Sz = step_x(z, s.vx[s.slot_z]);
 
   const int32_t tw = tex._width >> s.mip_level;
   const int32_t twm = tw - 1;
   __m128 Sux = _mm_set1_ps(s.vx[s.slot_u] * 4.f * tw);
-  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u]       * tw);
-  __m128 Su  = step_x(u * tw, s.vx[s.slot_u]    * tw);
+  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u] * tw);
+  __m128 Su = step_x(u * tw, s.vx[s.slot_u] * tw);
   __m128i Stwm = _mm_set_epi32(twm, twm, twm, twm);
 
   const int32_t th = tex._height >> s.mip_level;
   const int32_t thm = th - 1;
   __m128 Svx = _mm_set1_ps(s.vx[s.slot_v] * 4.f * th);
-  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v]       * th);
-  __m128 Sv  = step_x(v * th,   s.vx[s.slot_v]  * th);
+  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v] * th);
+  __m128 Sv = step_x(v * th, s.vx[s.slot_v] * th);
   __m128i Sthm = _mm_set_epi32(thm, thm, thm, thm);
 
-  const uint32_t wshift = tex._wshift - s.mip_level;
+  const int32_t wshift = std::max<int32_t>(0, int32_t(tex._wshift) - int32_t(s.mip_level));
   const uint32_t *texel = tex._pixels[s.mip_level];
 
   for (int y = 0; y < BLOCK_SIZE; ++y) {
@@ -197,7 +198,7 @@ static inline void stamp(
       // triangle edge test and depth (together)
       // if (zed <= depth[x]) {
       // XXX: should be cmple
-      __m128 keep = _mm_and_ps(_mm_and_ps(m0, _mm_cmplt_ps(Sz_, zbuf)),
+      __m128 keep = _mm_and_ps(_mm_and_ps(m0, DEPTH_CMP(Sz_, zbuf)),
                                _mm_and_ps(m1, m2));
 
       // depth write
@@ -269,27 +270,27 @@ static inline void stamp_ti(
 
   __m128 Siwx = _mm_set1_ps(s.vx[s.slot_iw] * 4.f);
   __m128 Siwy = _mm_set1_ps(s.vy[s.slot_iw]);
-  __m128 Siw  = step_x(iw, s.vx[s.slot_iw]);
+  __m128 Siw = step_x(iw, s.vx[s.slot_iw]);
 
   __m128 Szx = _mm_set1_ps(s.vx[s.slot_z] * 4.f);
   __m128 Szy = _mm_set1_ps(s.vy[s.slot_z]);
-  __m128 Sz  = step_x(z, s.vx[s.slot_z]);
+  __m128 Sz = step_x(z, s.vx[s.slot_z]);
 
   const int32_t tw = tex._width >> s.mip_level;
   const int32_t twm = tw - 1;
   __m128 Sux = _mm_set1_ps(s.vx[s.slot_u] * 4.f * tw);
-  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u]       * tw);
-  __m128 Su  = step_x(u * tw, s.vx[s.slot_u]    * tw);
+  __m128 Suy = _mm_set1_ps(s.vy[s.slot_u] * tw);
+  __m128 Su = step_x(u * tw, s.vx[s.slot_u] * tw);
   __m128i Stwm = _mm_set_epi32(twm, twm, twm, twm);
 
   const int32_t th = tex._height >> s.mip_level;
   const int32_t thm = th - 1;
   __m128 Svx = _mm_set1_ps(s.vx[s.slot_v] * 4.f * th);
-  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v]       * th);
-  __m128 Sv  = step_x(v * th,   s.vx[s.slot_v]  * th);
+  __m128 Svy = _mm_set1_ps(s.vy[s.slot_v] * th);
+  __m128 Sv = step_x(v * th, s.vx[s.slot_v] * th);
   __m128i Sthm = _mm_set_epi32(thm, thm, thm, thm);
 
-  const uint32_t wshift = tex._wshift - s.mip_level;
+  const int32_t wshift = std::max<int32_t>(0, int32_t(tex._wshift) - int32_t(s.mip_level));
   const uint32_t *texel = tex._pixels[s.mip_level];
 
   for (int y = 0; y < BLOCK_SIZE; ++y) {
@@ -306,8 +307,7 @@ static inline void stamp_ti(
 
       // triangle edge test and depth (together)
       // if (zed <= depth[x]) {
-      // XXX: should be cmple
-      __m128 keep = _mm_cmplt_ps(Sz_, zbuf);
+      __m128 keep = DEPTH_CMP(Sz_, zbuf);
 
       // depth write
       // depth[x] = zed;
@@ -358,7 +358,7 @@ static inline void stamp_ti(
   }
 }
 
-void draw_wg(
+void rast_tex_one_zero(
     const frame_t &f,
     const triangle_setup_t &s,
     const texture_t &tex)

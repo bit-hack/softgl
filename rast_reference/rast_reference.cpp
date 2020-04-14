@@ -12,11 +12,16 @@
 
 #include "kernel.h"
 
-void draw_wg(
+typedef void (draw_func_t)(
   const frame_t &f,
   const triangle_setup_t &s,
   const texture_t &tex);
 
+draw_func_t rast_tex_one_zero;
+draw_func_t rast_tex_one_one;
+draw_func_t rast_tex_dst_src;
+draw_func_t rast_tex_sa_msa;
+draw_func_t rast_tex_dst_zero;
 
 // ~log3.75 (should be log4 but this looks nice)
 const std::array<uint8_t, 128> mip_log_table = {
@@ -25,8 +30,27 @@ const std::array<uint8_t, 128> mip_log_table = {
     3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5,
 };
+
+static inline constexpr uint32_t blend_code(GLenum mode) {
+  return 
+    (mode == GL_ZERO) ? 0x0 :
+    (mode == GL_ONE) ? 0x1 :
+    (mode == GL_DST_COLOR) ? 0x2 :
+    (mode == GL_SRC_COLOR) ? 0x3 :
+    (mode == GL_ONE_MINUS_DST_COLOR) ? 0x4 :
+    (mode == GL_ONE_MINUS_SRC_COLOR) ? 0x5 :
+    (mode == GL_SRC_ALPHA) ? 0x6 :
+    (mode == GL_ONE_MINUS_SRC_ALPHA) ? 0x7 :
+    (mode == GL_DST_ALPHA) ? 0x8 :
+    (mode == GL_ONE_MINUS_DST_ALPHA) ? 0x9 :
+    (mode == GL_SRC_ALPHA_SATURATE) ? 0xa : 0x0;
+}
+
+static inline constexpr uint32_t blend_code(GLenum src, GLenum dst) {
+  return (blend_code(src) << 4) | blend_code(dst);
+}
 
 struct rast_reference_t : public raster_t {
 
@@ -34,6 +58,7 @@ struct rast_reference_t : public raster_t {
     _cxt = nullptr;
     _frame._pixels = nullptr;
     _tex = nullptr;
+    _draw_func = nullptr;
   }
 
   void framebuffer_clear(
@@ -83,6 +108,10 @@ struct rast_reference_t : public raster_t {
 
 protected:
 
+  draw_func_t *find_draw_func(const state_manager_t &state);
+
+  draw_func_t *_draw_func;
+
   bool setup_triangle(const triangle_t &t,
                       triangle_setup_t &s);
 
@@ -91,6 +120,26 @@ protected:
   frame_t _frame;
 };
 
+draw_func_t *rast_reference_t::find_draw_func(const state_manager_t &state) {
+  if (state.blendFrag) {
+    switch (blend_code(state.blendFuncSrc, state.blendFuncDst)) {
+    case blend_code(GL_ONE, GL_ZERO):
+      return rast_tex_one_zero;
+    case blend_code(GL_ONE, GL_ONE):
+      return rast_tex_one_zero;
+    case blend_code(GL_DST_COLOR, GL_SRC_COLOR):
+      return rast_tex_dst_src;
+    case blend_code(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA):
+      return rast_tex_sa_msa;
+    case blend_code(GL_DST_COLOR, GL_ZERO):
+      return rast_tex_dst_zero;
+    default:
+      DEBUG_BREAK;
+      break;
+    }
+  }
+  return rast_tex_one_zero;
+}
 
 bool rast_reference_t::setup_triangle(const triangle_t &t,
                                       triangle_setup_t &s) {
@@ -130,10 +179,11 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
     const float2 &t0 = t.vert[0].tex;
     const float2 &t1 = t.vert[1].tex;
     const float2 &t2 = t.vert[2].tex;
+
+    const float texture_area = _tex->_width * _tex->_height;
     const float uv_area =
-      (_tex->_width * _tex->_height) *
       ((t1.x - t0.x) * (t2.y - t0.y) - (t2.x - t0.x) * (t1.y - t0.y));
-    s.mip_level = get_mip_level(area, uv_area);
+    s.mip_level = get_mip_level(area, uv_area * texture_area);
   }
 
   // find edge vectors
@@ -200,6 +250,17 @@ bool rast_reference_t::setup_triangle(const triangle_t &t,
     s.vy[slot] = n0.y * a0 + n1.y * a1 + n2.y * a2;
   }
 
+  // a
+  {
+    const uint32_t slot = triangle_setup_t::slot_a;
+    const float a0 = t.vert[0].rgba.x;
+    const float a1 = t.vert[1].rgba.x;
+    const float a2 = t.vert[2].rgba.x;
+    s.v [slot] = c[0] * a0 + c[1] * a1 + c[2] * a2;
+    s.vx[slot] = c[3] * a0 + c[4] * a1 + c[5] * a2;
+    s.vy[slot] = c[6] * a0 + c[7] * a1 + c[8] * a2;
+  }
+
   // r
   {
     const uint32_t slot = triangle_setup_t::slot_r;
@@ -262,7 +323,9 @@ void rast_reference_t::push_triangles(const std::vector<triangle_t> &triangles,
                                       const texture_t *tex,
                                       const state_manager_t &state) {
 
-  if (!_cxt || !_frame._pixels) {
+  _draw_func = find_draw_func(state);
+
+  if (!_cxt || !_frame._pixels || !_draw_func) {
     return;
   }
 
@@ -279,10 +342,11 @@ void rast_reference_t::push_triangles(const std::vector<triangle_t> &triangles,
       continue;
     }
 
-    if (tex && tex->_pixels[0]) {
-      draw_wg(_frame, setup, *tex);
-    } else {
-      //        draw_wg(_frame, setup, *tex);
+    if (tex) {
+      _draw_func(_frame, setup, *tex);
+    }
+    else {
+      // TODO
     }
   }
 }

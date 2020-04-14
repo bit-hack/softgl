@@ -14,7 +14,7 @@
     }                               \
   }
 #else
-#define DEBUG_BREAK
+#define DEBUG_BREAK // __assume(0)
 #endif
 
 #if 0

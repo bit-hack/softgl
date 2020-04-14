@@ -56,6 +56,10 @@ void texture_manager_t::glTexImage2D(GLenum target, GLint level,
   if (level >= texture_t::mip_levels) {
     DEBUG_BREAK;
   }
+  if (level != 0) {
+    // XXX: disable mip upload for now
+    return;
+  }
 
   texture_t *t = boundTexture2d();
   if (!t) {
@@ -295,11 +299,15 @@ void texture_t::generateMipLevels() {
         const uint32_t s10 = src[(x * 2 + ox) + (y * 2 +  0) * sw];
         const uint32_t s01 = src[(x * 2 +  0) + (y * 2 + oy) * sw];
         const uint32_t s11 = src[(x * 2 + ox) + (y * 2 + oy) * sw];
+#if 0
+        dst[x + y * dw] = 0x01010101 << i;
+#else
         dst[x + y * dw] =
           ((s00 >> 2) & 0x3f3f3f3f) +
           ((s10 >> 2) & 0x3f3f3f3f) +
           ((s01 >> 2) & 0x3f3f3f3f) +
           ((s11 >> 2) & 0x3f3f3f3f);
+#endif
       }
     }
   }
@@ -335,7 +343,7 @@ void texture_t::load(uint32_t level, GLenum format, GLenum type, const void *src
   }
 }
 
-static inline uint32_t packARGB(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+static inline uint32_t packRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
   return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
@@ -352,12 +360,12 @@ void texture_t::load_rgba_8(uint32_t level, const void *src) {
     const uint8_t  *srcx = srcy;
           uint32_t *dstx = dsty;
     for (uint32_t x = 0; x < swidth; ++x) {
-      *dstx = packARGB(
+      *dstx = packRGBA(
         0, 
         (x * 255) / swidth,
         (y * 255) / sheight,
         0);
-      *dstx = packARGB(
+      *dstx = packRGBA(
         srcx[3],
         srcx[0],
         srcx[1],
@@ -383,12 +391,12 @@ void texture_t::load_bgra_8(uint32_t level, const void *src) {
     const uint8_t  *srcx = srcy;
           uint32_t *dstx = dsty;
     for (uint32_t x = 0; x < swidth; ++x) {
-      *dstx = packARGB(
+      *dstx = packRGBA(
         0, 
         (x * 255) / swidth,
         (y * 255) / sheight,
         0);
-      *dstx = packARGB(
+      *dstx = packRGBA(
         srcx[3],
         srcx[0],
         srcx[1],
@@ -414,7 +422,7 @@ void texture_t::load_bgr_8(uint32_t level, const void *src) {
     const uint8_t *srcx = srcy;
     uint32_t *dstx = dsty;
     for (uint32_t x = 0; x < swidth; ++x) {
-      *dstx = packARGB(0, srcx[2], srcx[1], srcx[0]);
+      *dstx = packRGBA(0, srcx[2], srcx[1], srcx[0]);
       srcx += 3;
       dstx += 1;
     }
@@ -436,7 +444,7 @@ void texture_t::load_rgb_8(uint32_t level, const void *src) {
     const uint8_t *srcx = srcy;
     uint32_t *dstx = dsty;
     for (uint32_t x = 0; x < swidth; ++x) {
-      *dstx = packARGB(0, srcx[0], srcx[1], srcx[2]);
+      *dstx = packRGBA(0, srcx[0], srcx[1], srcx[2]);
       srcx += 3;
       dstx += 1;
     }
