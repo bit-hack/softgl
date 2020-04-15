@@ -175,12 +175,6 @@ void texture_manager_t::glBindTexture(GLenum target, GLuint texture) {
     DEBUG_BREAK;
   }
 
-  // if the bound texture is changed
-  if (_bound[targetToIndex(target)] != texture) {
-    // flush the pipeline
-    Context->on_flush();
-  }
-
   texture_t *tex = getOrCreateTexture(texture);
   assert(tex);
   (void)tex;

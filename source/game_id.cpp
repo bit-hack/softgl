@@ -97,6 +97,9 @@ game_id_t getGameId()
   case 0x3b86fbcbf56b79bf:
     game_id = e_half_life_of_demo;
     break;
+  case 0x81326047f57f79bf:
+    game_id = e_unreal_gold;
+    break;
   default:
     game_id = e_unknown;
   }

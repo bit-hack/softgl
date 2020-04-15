@@ -22,10 +22,12 @@ draw_func_t rast_tex_one_one;
 draw_func_t rast_tex_dst_src;
 draw_func_t rast_tex_sa_msa;
 draw_func_t rast_tex_dst_zero;
+draw_func_t rast_tex_one_msc;
+draw_func_t rast_tex_one_msa;
 
 // ~log3.75 (should be log4 but this looks nice)
 const std::array<uint8_t, 128> mip_log_table = {
-    0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+    0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -133,6 +135,10 @@ draw_func_t *rast_reference_t::find_draw_func(const state_manager_t &state) {
       return rast_tex_sa_msa;
     case blend_code(GL_DST_COLOR, GL_ZERO):
       return rast_tex_dst_zero;
+    case blend_code(GL_ONE, GL_ONE_MINUS_SRC_COLOR):
+      return rast_tex_one_msc;
+    case blend_code(GL_ONE, GL_ONE_MINUS_SRC_ALPHA):
+      return rast_tex_one_msa;
     default:
       DEBUG_BREAK;
       break;
@@ -342,11 +348,12 @@ void rast_reference_t::push_triangles(const std::vector<triangle_t> &triangles,
       continue;
     }
 
-    if (tex) {
-      _draw_func(_frame, setup, *tex);
-    }
-    else {
-      // TODO
+    if (state.texture2D) {
+      if (tex && tex->_pixels[0]) {
+        _draw_func(_frame, setup, *tex);
+      } else {
+        // TODO
+      }
     }
   }
 }

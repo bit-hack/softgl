@@ -278,7 +278,7 @@ void primative_manager_t::clip_triangles() {
 void primative_manager_t::cull_triangles() {
   auto &state = _cxt.state;
 
-  bool is_ut99 = getGameId() == e_ut99_goty;
+  bool is_ut99 = getGameId() == e_ut99_goty || getGameId() == e_unreal_gold;
 
   if (state.cullFace) {
     for (triangle_t &t : _triangles) {

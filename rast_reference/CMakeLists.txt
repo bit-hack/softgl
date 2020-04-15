@@ -1,8 +1,7 @@
 file(GLOB KERNELS kernels/*.cpp)
 add_library(
     softgl_rast_reference_kernels
-    ${KERNELS}
-    )
+    ${KERNELS})
 
 file(GLOB C_FILES *.cpp)
 file(GLOB H_FILES *.h)

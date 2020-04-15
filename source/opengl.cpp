@@ -61,6 +61,7 @@ void __stdcall glBegin(GLenum mode) {
 void __stdcall glBindTexture(GLenum target, GLuint texture) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     cxt->texture.glBindTexture(target, texture);
   }
 }
@@ -76,6 +77,7 @@ void __stdcall glBitmap(GLsizei width, GLsizei height, GLfloat xorig,
 void __stdcall glBlendFunc(GLenum sfactor, GLenum dfactor) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     cxt->state.blendFuncSrc = sfactor;
     cxt->state.blendFuncDst = dfactor;
   }
@@ -96,6 +98,8 @@ void __stdcall glCallLists(GLsizei n, GLenum type, const GLvoid *lists) {
 void __stdcall glClear(GLbitfield mask) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+
+    cxt->on_flush();
 
     const bool color   = (0 != (mask & GL_COLOR_BUFFER_BIT));
     const bool depth   = (0 != (mask & GL_DEPTH_BUFFER_BIT));
@@ -429,6 +433,7 @@ void __stdcall glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset,
 void __stdcall glCullFace(GLenum mode) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     cxt->state.cullMode = mode;
   }
 }
@@ -448,6 +453,7 @@ void __stdcall glDeleteLists(GLuint list, GLsizei range) {
 void __stdcall glDeleteTextures(GLsizei n, const GLuint *textures) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     cxt->texture.glDeleteTextures(n, textures);
   }
 }
@@ -455,6 +461,7 @@ void __stdcall glDeleteTextures(GLsizei n, const GLuint *textures) {
 void __stdcall glDepthFunc(GLenum func) {
   TRACE();
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     cxt->state.depthFunc = func;
   }
 }
@@ -478,6 +485,7 @@ void __stdcall glDepthRange(GLclampd zNear, GLclampd zFar) {
 void __stdcall glDisable(GLenum cap) {
   TRACE_FMT("%s(0x%08x)\n", __func__, (int)cap);
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     auto &state = cxt->state;
     switch (cap) {
     case GL_TEXTURE_1D:          state.texture1D       = false; break;
@@ -497,6 +505,7 @@ void __stdcall glDisable(GLenum cap) {
 void __stdcall glDisableClientState(GLenum array) {
   TRACE_FMT("%s(0x%08x)\n", __func__, (int)array);
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     auto &state = cxt->state;
     switch (array) {
     case GL_COLOR_ARRAY:         state.array_color     = false; break;
@@ -566,6 +575,7 @@ void __stdcall glEdgeFlagv(const GLboolean *flag) {
 void __stdcall glEnable(GLenum cap) {
   TRACE_FMT("%s(0x%08x)\n", __func__, (int)cap);
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     auto &state = cxt->state;
     switch (cap) {
     case GL_TEXTURE_1D:   state.texture1D              = true; break;
@@ -585,6 +595,7 @@ void __stdcall glEnable(GLenum cap) {
 void __stdcall glEnableClientState(GLenum array) {
   TRACE_FMT("%s(0x%08x)\n", __func__, (int)array);
   if (gl_context_t *cxt = Context) {
+    cxt->on_flush();
     auto &state = cxt->state;
     switch (array) {
     case GL_COLOR_ARRAY:         state.array_color     = true; break;

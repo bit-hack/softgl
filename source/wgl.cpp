@@ -58,6 +58,7 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   switch (getGameId()) {
   case e_ut99_goty:
   case e_half_life_of_demo:
+  case e_unreal_gold:
     if (Context->raster.inst) {
       Context->raster.inst->framebuffer_clear(false, true, false, 0x202020, 10000.f, 0);
     }

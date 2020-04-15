@@ -9,6 +9,7 @@ enum game_id_t {
   e_half_life_of_demo,
   e_ut99_goty,
   e_ut2003_demo,
+  e_unreal_gold
 };
 
 game_id_t getGameId();
