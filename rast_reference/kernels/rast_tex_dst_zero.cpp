@@ -8,4 +8,8 @@
 #define DST_BLEND   GL_ZERO
 #define KERNEL_NAME rast_tex_dst_zero
 
+#if USE_APROX_TEMPLATE
+#include "template_aprox.h"
+#else
 #include "template.h"
+#endif

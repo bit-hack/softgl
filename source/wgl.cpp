@@ -56,6 +56,7 @@ BOOL __stdcall wglSwapBuffers_imp(HDC a) {
   GdiHook.invalidate(gl_context->window.getHwnd());
 
   switch (getGameId()) {
+  case e_ut2003_demo:
   case e_ut99_goty:
   case e_half_life_of_demo:
   case e_unreal_gold:

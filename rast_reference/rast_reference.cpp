@@ -140,7 +140,7 @@ draw_func_t *rast_reference_t::find_draw_func(const state_manager_t &state) {
     case blend_code(GL_ONE, GL_ONE_MINUS_SRC_ALPHA):
       return rast_tex_one_msa;
     default:
-      DEBUG_BREAK;
+//      DEBUG_BREAK;
       break;
     }
   }
@@ -348,7 +348,7 @@ void rast_reference_t::push_triangles(const std::vector<triangle_t> &triangles,
       continue;
     }
 
-    if (state.texture2D) {
+    if (state.texture2D || true) {
       if (tex && tex->_pixels[0]) {
         _draw_func(_frame, setup, *tex);
       } else {

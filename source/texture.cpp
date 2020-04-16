@@ -171,8 +171,12 @@ void texture_manager_t::glCopyTexSubImage2D(GLenum target, GLint level,
 }
 
 void texture_manager_t::glBindTexture(GLenum target, GLuint texture) {
+
+#define GL_TEXTURE_CUBE_MAP_ARB           0x8513
+
   if (target != GL_TEXTURE_2D) {
-    DEBUG_BREAK;
+//    DEBUG_BREAK;
+    return;
   }
 
   texture_t *tex = getOrCreateTexture(texture);

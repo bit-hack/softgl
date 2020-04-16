@@ -59,7 +59,7 @@ static inline void stamp_affine(
       __m128 Sv2_ = _mm_sub_ps(_mm_set_ps1(1.f), _mm_add_ps(Sv0_, Sv1_));
 
       // load depth values
-#if DEPTH_TEST
+#if DEPTH_TEST && (DEPTH_CMP != GL_ALWAYS) && (DEPTH_CMP != GL_NEVER)
       __m128 zbuf = _mm_load_ps(depth + x);
 #endif
 
@@ -71,8 +71,7 @@ static inline void stamp_affine(
 
       // triangle edge test and depth (together)
       // if (zed <= depth[x]) {
-      // XXX: should be cmple
-#if DEPTH_TEST
+#if DEPTH_TEST && (DEPTH_CMP != GL_ALWAYS) && (DEPTH_CMP != GL_NEVER)
       __m128 keep = _mm_and_ps(_mm_and_ps(m0, DEPTH_CMP(Sz_, zbuf)),
                                _mm_and_ps(m1, m2));
 #else
@@ -89,26 +88,32 @@ static inline void stamp_affine(
       // u / (1/w),  v / (1/w)
       // ((int32_t(u/iw)&twm) +
       //  (int32_t(u/iw)&twm) << tex._wshift)
-      __m128i tu  = _mm_and_si128(_mm_cvtps_epi32(Su_), Stwm);
-      __m128i tv  = _mm_and_si128(_mm_cvtps_epi32(Sv_), Sthm);
-      __m128i ti  = _mm_add_epi32(tu, _mm_slli_epi32(tv, wshift));
+      const __m128i tu  = _mm_and_si128(_mm_cvtps_epi32(Su_), Stwm);
+      const __m128i tv  = _mm_and_si128(_mm_cvtps_epi32(Sv_), Sthm);
+      const __m128i ti  = _mm_add_epi32(tu, _mm_slli_epi32(tv, wshift));
 
       // extract texture indices
-      uint32_t ti0 = _mm_extract_epi32(ti, 0);
-      uint32_t ti1 = _mm_extract_epi32(ti, 1);
-      uint32_t ti2 = _mm_extract_epi32(ti, 2);
-      uint32_t ti3 = _mm_extract_epi32(ti, 3);
+      const uint32_t ti0 = _mm_extract_epi32(ti, 0);
+      const uint32_t ti1 = _mm_extract_epi32(ti, 1);
+      const uint32_t ti2 = _mm_extract_epi32(ti, 2);
+      const uint32_t ti3 = _mm_extract_epi32(ti, 3);
 
       // load from the texture
-      uint32_t tc0 = texel[ti0];
-      uint32_t tc1 = texel[ti1];
-      uint32_t tc2 = texel[ti2];
-      uint32_t tc3 = texel[ti3];
+      const uint32_t tc0 = texel[ti0];
+      const uint32_t tc1 = texel[ti1];
+      const uint32_t tc2 = texel[ti2];
+      const uint32_t tc3 = texel[ti3];
 
       // blend equation
-      __m128i src = _mm_set_epi32(tc3, tc2, tc1, tc0);
-      __m128i dst = _mm_load_si128((__m128i*)(color + x));
-      __m128i out = blend_sum<SRC_BLEND, DST_BLEND>(src, dst);
+#if (SRC_BLEND == GL_ONE) && (DST_BLEND == GL_ZERO)
+      // special case for one and zero since out is directly our source
+      const __m128i out = _mm_set_epi32(tc3, tc2, tc1, tc0);
+#else
+      // generic case where we have an arbitary blending equation
+      const __m128i src = _mm_set_epi32(tc3, tc2, tc1, tc0);
+      const __m128i dst = _mm_load_si128((__m128i*)(color + x));
+      const __m128i out = blend_sum<SRC_BLEND, DST_BLEND>(src, dst);
+#endif
 
       // color write
       _mm_maskstore_epi32((int*)color + x, _mm_castps_si128(keep), out);
@@ -196,25 +201,26 @@ static inline void stamp(
 
       // third edge coefficient
       // const float v2_ = 1.f - (v0_ + v1_);
-      __m128 Sv2_ = _mm_sub_ps(_mm_set_ps1(1.f), _mm_add_ps(Sv0_, Sv1_));
+      const __m128 Sv2_ = _mm_sub_ps(_mm_set_ps1(1.f), _mm_add_ps(Sv0_, Sv1_));
 
       // load depth values
-      __m128 zbuf = _mm_load_ps(depth + x);
+#if DEPTH_TEST && (DEPTH_CMP != GL_ALWAYS) && (DEPTH_CMP != GL_NEVER)
+      const __m128 zbuf = _mm_load_ps(depth + x);
+#endif
 
       // triangle edge test
       // if (v0_ > 0.f && v1_ > 0.f && v2_ > 0.f) {
-      __m128 m0 = _mm_cmpge_ps(Sv0_, _mm_setzero_ps());
-      __m128 m1 = _mm_cmpge_ps(Sv1_, _mm_setzero_ps());
-      __m128 m2 = _mm_cmpge_ps(Sv2_, _mm_setzero_ps());
+      const __m128 m0 = _mm_cmpge_ps(Sv0_, _mm_setzero_ps());
+      const __m128 m1 = _mm_cmpge_ps(Sv1_, _mm_setzero_ps());
+      const __m128 m2 = _mm_cmpge_ps(Sv2_, _mm_setzero_ps());
 
       // triangle edge test and depth (together)
       // if (zed <= depth[x]) {
-      // XXX: should be cmple
-#if DEPTH_TEST
-      __m128 keep = _mm_and_ps(_mm_and_ps(m0, DEPTH_CMP(Sz_, zbuf)),
+#if DEPTH_TEST && (DEPTH_CMP != GL_ALWAYS) && (DEPTH_CMP != GL_NEVER)
+      const __m128 keep = _mm_and_ps(_mm_and_ps(m0, DEPTH_CMP(Sz_, zbuf)),
                                _mm_and_ps(m1, m2));
 #else
-      __m128 keep = _mm_and_ps(m0, _mm_and_ps(m1, m2));
+      const __m128 keep = _mm_and_ps(m0, _mm_and_ps(m1, m2));
 #endif
 
 #if DEPTH_WRITE
@@ -225,31 +231,37 @@ static inline void stamp(
 
 #if COLOR_WRITE
       // find 1 / (1/w)
-      __m128 rw = _mm_rcp_ps(Siw_);
+      const __m128 rw = _mm_rcp_ps(Siw_);
 
       // u / (1/w),  v / (1/w)
       // ((int32_t(u/iw)&twm) +
       //  (int32_t(u/iw)&twm) << tex._wshift)
-      __m128i tu  = _mm_and_si128(_mm_cvtps_epi32(_mm_mul_ps(Su_, rw)), Stwm);
-      __m128i tv  = _mm_and_si128(_mm_cvtps_epi32(_mm_mul_ps(Sv_, rw)), Sthm);
-      __m128i ti  = _mm_add_epi32(tu, _mm_slli_epi32(tv, wshift));
+      const __m128i tu  = _mm_and_si128(_mm_cvtps_epi32(_mm_mul_ps(Su_, rw)), Stwm);
+      const __m128i tv  = _mm_and_si128(_mm_cvtps_epi32(_mm_mul_ps(Sv_, rw)), Sthm);
+      const __m128i ti  = _mm_add_epi32(tu, _mm_slli_epi32(tv, wshift));
 
       // extract texture indices
-      uint32_t ti0 = _mm_extract_epi32(ti, 0);
-      uint32_t ti1 = _mm_extract_epi32(ti, 1);
-      uint32_t ti2 = _mm_extract_epi32(ti, 2);
-      uint32_t ti3 = _mm_extract_epi32(ti, 3);
+      const uint32_t ti0 = _mm_extract_epi32(ti, 0);
+      const uint32_t ti1 = _mm_extract_epi32(ti, 1);
+      const uint32_t ti2 = _mm_extract_epi32(ti, 2);
+      const uint32_t ti3 = _mm_extract_epi32(ti, 3);
 
       // load from the texture
-      uint32_t tc0 = texel[ti0];
-      uint32_t tc1 = texel[ti1];
-      uint32_t tc2 = texel[ti2];
-      uint32_t tc3 = texel[ti3];
+      const uint32_t tc0 = texel[ti0];
+      const uint32_t tc1 = texel[ti1];
+      const uint32_t tc2 = texel[ti2];
+      const uint32_t tc3 = texel[ti3];
 
       // blend equation
+#if (SRC_BLEND == GL_ONE) && (DST_BLEND == GL_ZERO)
+      // special case for one and zero since out is directly our source
+      const __m128i out = _mm_set_epi32(tc3, tc2, tc1, tc0);
+#else
+      // generic case where we have an arbitary blending equation
       __m128i src = _mm_set_epi32(tc3, tc2, tc1, tc0);
       __m128i dst = _mm_load_si128((__m128i*)(color + x));
       __m128i out = blend_sum<SRC_BLEND, DST_BLEND>(src, dst);
+#endif
 
       // color write
       _mm_maskstore_epi32((int*)color + x, _mm_castps_si128(keep), out);
@@ -327,12 +339,13 @@ static inline void stamp_ti(
     for (int x = 0; x < BLOCK_SIZE; x += 4) {
 
       // load depth values
+#if DEPTH_TEST && (DEPTH_CMP != GL_ALWAYS) && (DEPTH_CMP != GL_NEVER)
       const __m128 zbuf = _mm_load_ps(depth + x);
+#endif
 
       // triangle edge test and depth (together)
       // if (zed <= depth[x]) {
-      // XXX: should be cmple
-#if DEPTH_TEST
+#if DEPTH_TEST && (DEPTH_CMP != GL_ALWAYS) && (DEPTH_CMP != GL_NEVER)
       const __m128 keep = DEPTH_CMP(Sz_, zbuf);
 #else
       const __m128 keep = _mm_castsi128_ps (_mm_set1_epi32(0xffffffff));
@@ -406,10 +419,6 @@ void KERNEL_NAME (
     const triangle_setup_t &s,
     const texture_t &tex)
 {
-  __m128i a = _mm_set1_epi8((char)0xff);
-  __m128i b = _mm_set1_epi8((char)0x40);
-  __m128i c = _mm_mulhi_epi8(a, b);
-
   const recti_t rect = { s.bound.x0                   & BLOCK_MASK,
                          s.bound.y0                   & BLOCK_MASK,
                         (s.bound.x1 + BLOCK_SIZE - 1) & BLOCK_MASK,

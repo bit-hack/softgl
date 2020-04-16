@@ -835,10 +835,18 @@ void __stdcall glGetFloatv(GLenum pname, GLfloat *params) {
 void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
   TRACE_FMT("%s(0x%08x, %p)\n", __func__, (int)pname, (void*)params);
 
-  #define GL_MAX_TEXTURE_UNITS 0x84E2
+#define GL_MAX_TEXTURE_UNITS            0x84E2
+#define GL_MAX_TEXTURE_COORDS           0x8871
+#define GL_MAX_TEXTURE_IMAGE_UNITS_ARB  0x8872
 
   if (gl_context_t *cxt = Context) {
     switch (pname) {
+    case GL_MAX_TEXTURE_COORDS:
+      *params = 4; // doom3
+      break;
+    case GL_MAX_TEXTURE_IMAGE_UNITS_ARB:
+      *params = 8;
+      break;
     case GL_MAX_TEXTURE_SIZE:
       *params = 512;
       break;
@@ -861,6 +869,7 @@ void __stdcall glGetIntegerv(GLenum pname, GLint *params) {
       *params = 8;
       break;
     case GL_MAX_TEXTURE_UNITS: // UT2003 wants this
+      // note: can be 2 for DOOM3
       *params = 8;
       break;
     default:
@@ -955,7 +964,17 @@ const GLubyte *__stdcall glGetString(GLenum name) {
   case GL_VERSION: // specifies opengl version
     return (GLubyte *)"2.0";
   case GL_EXTENSIONS: // space-separated list of supported extensions
-    return (const GLubyte *)"GL_EXT_bgra GL_EXT_abgr ARB_multitexture";
+    return (const GLubyte *)
+      "GL_EXT_bgra "
+      "GL_EXT_abgr ARB_multitexture "
+      "GL_ARB_multitexture "
+      "GL_ARB_texture_env_combine "
+      "GL_ARB_texture_cube_map "
+      "GL_ARB_texture_env_dot3 "
+      "GL_ARB_texture_env_add "
+//      "GL_ARB_texture_non_power_of_two "
+//      "GL_ARB_texture_compression "
+      ;
   default:
     return (GLubyte *)"";
   }
@@ -2480,6 +2499,7 @@ void __stdcall glMultiTexCoord4sARB(GLenum target, GLshort s, GLshort t,
 
 void __stdcall glActiveTextureARB(GLenum texture) {
   TRACE();
+  // select active texture unit
 //  DEBUG_BREAK; UT2003
 }
 

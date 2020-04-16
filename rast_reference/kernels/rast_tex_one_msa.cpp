@@ -8,4 +8,8 @@
 #define DST_BLEND   GL_ONE_MINUS_SRC_ALPHA
 #define KERNEL_NAME rast_tex_one_msa
 
+#if USE_APROX_TEMPLATE
+#include "template_aprox.h"
+#else
 #include "template.h"
+#endif

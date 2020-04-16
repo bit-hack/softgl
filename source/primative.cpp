@@ -439,9 +439,36 @@ void primative_manager_t::glArrayElement(GLint i) {
   _push_vertex(vertex_t{v, argb, uv});
 }
 
-void primative_manager_t::glDrawElements(GLenum mode, GLsizei count,
-                                         GLenum type, const GLvoid *indices) {
-  DEBUG_BREAK;
+void primative_manager_t::glDrawElements(GLenum mode,
+                                         GLsizei count,
+                                         GLenum type,
+                                         const GLvoid *indices) {
+  switch (type) {
+  case GL_UNSIGNED_SHORT:
+  {
+    glBegin(mode);
+    const uint16_t *ind = (const uint16_t *)indices;
+    for (int i = 0; i < count; ++i) {
+      const uint16_t index = ind[i];
+      glArrayElement(index);
+    }
+    glEnd();
+  }
+  break;
+  case GL_UNSIGNED_INT:
+  {
+    glBegin(mode);
+    const uint32_t *ind = (const uint32_t *)indices;
+    for (int i = 0; i < count; ++i) {
+      const uint16_t index = ind[i];
+      glArrayElement(index);
+    }
+    glEnd();
+  }
+  break;
+  default:
+    DEBUG_BREAK;
+  }
 }
 
 
