@@ -55,9 +55,10 @@ An opengl implementation using Software Rendering on the CPU.
 ## The future
 
 - Support more old OpenGL games
+- Fixed point UV interpolation
+- More blend modes
 - Use AVX stamps
 - Multuithread the rasterizer
-- More blend modes
 - JIT the raster stamps
 - Improve the OpenCL backend
 - Z-buffer at the stamp level for fast culling
@@ -68,6 +69,14 @@ An opengl implementation using Software Rendering on the CPU.
   - Texenv
   - Stencil Test
   - ...
+
+
+## Statistics
+
+Stats from the quake 3 timedemo (default settings) invoked via `quake3.exe +timedemo 1 +demo four`.
+
+> 1260 frames 51.0 seconds 24.7 fps 15.0/40.5/78.0/11.2 ms
+
 
 ## Screenshots
 
@@ -80,3 +89,9 @@ These screenshots show the current state of progress on 15/04/2020.
 ![](docs/screenshots/ut99_goty.png?raw=true "Unreal Tournament GOTY")
 
 ![](docs/screenshots/quake2.png?raw=true "Quake 2")
+
+![](docs/screenshots/doom3_1.png?raw=true "Doom 3")
+
+![](docs/screenshots/doom3_2.png?raw=true "Doom 3")
+
+![](docs/screenshots/ut2003.png?raw=true "Unreal Tournament 2003")
